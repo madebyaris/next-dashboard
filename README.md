@@ -2,6 +2,13 @@
 
 A modern dashboard application built with Next.js 13+, featuring user authentication, post management, and real-time statistics.
 
+This is build by AI with ❤️, thanks to Windsurf.
+
+To learn how to use this project, refer to the [Getting Started](#getting-started) section below.
+
+And you can start using our docs guide:
+[docs/GUIDE.md](docs/GUIDE.md).
+
 ## Features
 
 - 🔐 **Authentication**
@@ -39,7 +46,7 @@ A modern dashboard application built with Next.js 13+, featuring user authentica
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/next-dashboard.git
+   git clone https://github.com/madebyaris/next-dashboard.git
    cd next-dashboard
    ```
 
