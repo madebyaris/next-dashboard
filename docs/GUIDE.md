@@ -404,43 +404,60 @@ pnpm create-user --name="User Name" --email="user@example.com" --password="passw
 | --password  | User's password (minimum 6 characters)           | Yes      | -       |
 | --role      | User's role (ADMIN, EDITOR, or VIEWER)          | No       | VIEWER  |
 
-#### Examples
+### Creating Dashboard Pages
 
-1. Create an admin user:
+Generate new dashboard pages with a standardized structure using the CLI tool:
+
 ```bash
-pnpm create-user --name="Admin User" --email="admin@example.com" --password="admin123" --role="ADMIN"
+pnpm create-page --name="feature" --route="feature" --title="Feature Management" --description="Manage your features here"
 ```
 
-2. Create an editor:
+#### Parameters
+
+| Parameter    | Description                                      | Required | Default |
+|-------------|--------------------------------------------------|----------|---------|
+| --name      | Page component name (camelCase)                  | Yes      | -       |
+| --route     | URL route path                                   | Yes      | -       |
+| --title     | Page title                                       | Yes      | -       |
+| --description| Page description                                | No       | -       |
+
+#### Generated Files
+
+The command creates a new directory in `src/app/dashboard/[route]` with:
+
+1. `page.tsx`: Main page component with:
+   - Page header with title and description
+   - Add button
+   - Loading state handling
+   - Empty state component
+
+2. `loading.tsx`: Loading state component
+
+3. `error.tsx`: Error handling component
+
+#### Example Usage
+
+1. Create a products page:
 ```bash
-pnpm create-user --name="Editor User" --email="editor@example.com" --password="editor123" --role="EDITOR"
+pnpm create-page --name="products" --route="products" --title="Products" --description="Manage your products"
 ```
 
-3. Create a viewer:
+2. Create a settings page:
 ```bash
-pnpm create-user --name="Viewer User" --email="viewer@example.com" --password="viewer123"
+pnpm create-page --name="settings" --route="settings" --title="Settings" --description="Configure your dashboard"
 ```
 
-#### Response
-
-The command will return a JSON object with the created user's details:
-
-```json
-{
-  "id": "clh...",
-  "name": "Admin User",
-  "email": "admin@example.com",
-  "role": "ADMIN",
-  "createdAt": "2024-02-15T..."
-}
+This will create:
+```
+src/app/dashboard/products/
+├── page.tsx
+├── loading.tsx
+└── error.tsx
 ```
 
-#### Error Handling
-
-The script includes validation and error handling for:
-- Invalid email format
-- Password length (minimum 6 characters)
-- Duplicate email addresses
-- Invalid role values
-
-Error messages will be displayed in the terminal with specific details about the validation failure.
+The generated page includes:
+- Role-based access control
+- Loading states
+- Error handling
+- Empty state
+- Standard layout structure
