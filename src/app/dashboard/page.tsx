@@ -3,10 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { PageHeader } from '@/components/dashboard/page-header'
-import { StatsCard } from '@/components/dashboard/stats-card'
 import { RecentPosts } from '@/components/dashboard/recent-posts'
 import { RecentUsers } from '@/components/dashboard/recent-users'
-import { Users, FileText, Eye } from 'lucide-react'
+import { DashboardLoading, StatsCardLoading } from '@/components/dashboard/loading'
+import { StatsSection } from '@/components/dashboard/stats-section'
 
 async function getStats() {
   const [totalUsers, totalPosts, publishedPosts] = await Promise.all([
@@ -35,24 +35,11 @@ export default async function DashboardPage() {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatsCard
-          title="Total Users"
-          value={stats.totalUsers}
-          icon={Users}
-          description="Total number of registered users"
-        />
-        <StatsCard
-          title="Total Posts"
-          value={stats.totalPosts}
-          icon={FileText}
-          description="Total number of posts created"
-        />
-        <StatsCard
-          title="Published Posts"
-          value={stats.publishedPosts}
-          icon={Eye}
-          description="Number of posts published"
-        />
+        <Suspense fallback={[...Array(3)].map((_, i) => (
+          <StatsCardLoading key={i} />
+        ))}>
+          <StatsSection data={stats} />
+        </Suspense>
       </div>
 
       {/* Recent Activity */}

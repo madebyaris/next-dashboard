@@ -1,7 +1,10 @@
-import { notFound } from 'next/navigation'
-import { DashboardHeader } from '@/components/dashboard/header'
-import { PostForm } from '@/components/posts/post-form'
-import { getPostById } from '@/lib/api'
+import { DashboardShell } from '@/components/dashboard/shell'
+import { posts } from '@/resources/posts'
+import { PostForm } from '@/resources/posts/components'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import type { Post } from '@/resources/posts'
 
 interface EditPostPageProps {
   params: {
@@ -9,27 +12,35 @@ interface EditPostPageProps {
   }
 }
 
-export const metadata = {
-  title: 'Edit Post',
-  description: 'Edit your blog post',
-}
-
 export default async function EditPostPage({ params }: EditPostPageProps) {
-  const post = await getPostById(params.postId)
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    redirect('/login')
+  }
 
-  if (!post) {
-    notFound()
+  const post = await posts.actions.getById(params.postId)
+
+  async function onSubmit(data: Omit<Post, 'id' | 'createdAt' | 'updatedAt' | 'author'>) {
+    'use server'
+    
+    if (!session?.user?.id) {
+      throw new Error('Not authenticated')
+    }
+
+    await posts.actions.update(params.postId, {
+      ...data,
+      authorId: session.user.id,
+    })
   }
 
   return (
-    <div className="space-y-6">
-      <DashboardHeader
-        heading="Edit Post"
-        text="Make changes to your post."
-      />
-      <div className="grid gap-6">
-        <PostForm initialData={post} />
+    <DashboardShell
+      title="Edit Post"
+      description="Edit your blog post"
+    >
+      <div className="grid gap-8">
+        <PostForm initialData={post} onSubmit={onSubmit} />
       </div>
-    </div>
+    </DashboardShell>
   )
 }

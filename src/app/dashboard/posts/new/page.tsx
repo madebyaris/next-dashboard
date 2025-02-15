@@ -1,21 +1,38 @@
-import { DashboardHeader } from '@/components/dashboard/header'
-import { PostForm } from '@/components/posts/post-form'
+import { DashboardShell } from '@/components/dashboard/shell'
+import { posts } from '@/resources/posts'
+import { PostForm } from '@/resources/posts/components'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import type { Post } from '@/resources/posts'
 
-export const metadata = {
-  title: 'Create Post',
-  description: 'Create a new blog post',
-}
+export default async function NewPostPage() {
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    redirect('/login')
+  }
 
-export default function NewPostPage() {
+  async function onSubmit(data: Omit<Post, 'id' | 'createdAt' | 'updatedAt' | 'author'>) {
+    'use server'
+    
+    if (!session?.user?.id) {
+      throw new Error('Not authenticated')
+    }
+
+    await posts.actions.create({
+      ...data,
+      authorId: session.user.id,
+    })
+  }
+
   return (
-    <div className="space-y-6">
-      <DashboardHeader
-        heading="Create Post"
-        text="Create a new blog post."
-      />
-      <div className="grid gap-6">
-        <PostForm />
+    <DashboardShell
+      title="New Post"
+      description="Create a new blog post"
+    >
+      <div className="grid gap-8">
+        <PostForm onSubmit={onSubmit} />
       </div>
-    </div>
+    </DashboardShell>
   )
 }

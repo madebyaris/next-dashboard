@@ -1,12 +1,5 @@
-'use client'
-
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { formatDistanceToNow } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { api } from '@/lib/api'
-import { DashboardLoading } from './loading'
-import { ErrorState } from './error-state'
 import { prisma } from '@/lib/prisma'
 
 interface Post {
@@ -18,26 +11,30 @@ interface Post {
   }
 }
 
-async function getRecentPosts(): Promise<Post[]> {
-  const posts = await prisma.post.findMany({
-    take: 5,
-    orderBy: {
-      createdAt: 'desc',
-    },
-    include: {
-      author: {
-        select: {
-          name: true,
+async function fetchRecentPosts() {
+  try {
+    const posts = await prisma.post.findMany({
+      take: 5,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        author: {
+          select: {
+            name: true,
+          },
         },
       },
-    },
-  })
-
-  return posts
+    })
+    return posts
+  } catch (error) {
+    console.error('[FETCH_RECENT_POSTS]', error)
+    return []
+  }
 }
 
 export async function RecentPosts() {
-  const posts = await getRecentPosts()
+  const posts = await fetchRecentPosts()
 
   return (
     <Card>
@@ -62,6 +59,9 @@ export async function RecentPosts() {
               </div>
             </div>
           ))}
+          {posts.length === 0 && (
+            <p className="text-sm text-muted-foreground">No posts yet</p>
+          )}
         </div>
       </CardContent>
     </Card>

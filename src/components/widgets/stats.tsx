@@ -3,7 +3,7 @@
 import { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface StatsWidgetProps {
+export interface StatsWidgetProps {
   value: string | number
   label: string
   icon: LucideIcon
@@ -13,6 +13,7 @@ interface StatsWidgetProps {
     label: string
   }
   className?: string
+  width?: string
 }
 
 export function StatsWidget({
@@ -21,9 +22,10 @@ export function StatsWidget({
   icon: Icon,
   trend,
   className,
+  width,
 }: StatsWidgetProps) {
   return (
-    <div className={cn('p-6 bg-card rounded-lg border', className)}>
+    <div className={cn('p-6 bg-card rounded-lg border', className, width && `w-${width}`)}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-primary/10 rounded-lg">

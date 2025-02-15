@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { formatDistanceToNow } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { api } from '@/lib/api'
-import { DashboardLoading } from './loading'
-import { ErrorState } from './error-state'
-import { prisma } from '@/lib/prisma'
+import { getRecentUsers } from '@/lib/actions/users'
 
 interface User {
   id: string
@@ -18,26 +13,46 @@ interface User {
   createdAt: Date
 }
 
-async function getRecentUsers(): Promise<User[]> {
-  const users = await prisma.user.findMany({
-    take: 5,
-    orderBy: {
-      createdAt: 'desc',
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-    },
-  })
+export function RecentUsers() {
+  const [users, setUsers] = useState<User[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  return users
-}
+  useEffect(() => {
+    async function loadUsers() {
+      try {
+        const data = await getRecentUsers()
+        setUsers(data)
+      } catch (error) {
+        console.error('Failed to load users:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-export async function RecentUsers() {
-  const users = await getRecentUsers()
+    loadUsers()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Users</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-8">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center animate-pulse">
+                <div className="space-y-2">
+                  <div className="h-4 w-48 bg-muted rounded" />
+                  <div className="h-3 w-32 bg-muted rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
@@ -62,6 +77,9 @@ export async function RecentUsers() {
               </div>
             </div>
           ))}
+          {users.length === 0 && (
+            <p className="text-sm text-muted-foreground">No users yet</p>
+          )}
         </div>
       </CardContent>
     </Card>

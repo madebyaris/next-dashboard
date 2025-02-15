@@ -1,69 +1,53 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
+import { posts } from '@/resources/posts'
+import { DashboardShell } from '@/components/dashboard/shell'
 import { Button } from '@/components/ui/button'
-import { PostsTable } from '@/components/posts/posts-table'
-import { DashboardHeader } from '@/components/dashboard/header'
-import { DashboardLoading } from '@/components/dashboard/loading'
-import { ErrorState } from '@/components/dashboard/error-state'
-import { EmptyState } from '@/components/dashboard/empty-state'
-import { Plus } from 'lucide-react'
-import { getPosts } from '@/lib/api'
+import Link from 'next/link'
+import { PlusCircle } from 'lucide-react'
+import { Stats, Table } from '@/resources/posts/components'
 
-export const metadata = {
-  title: 'Posts Management',
-  description: 'Manage your blog posts',
-}
+export default async function PostsPage() {
+  const [postsData, stats] = await Promise.all([
+    posts.actions.list(),
+    posts.actions.getStats(),
+  ])
 
-async function PostsList() {
-  try {
-    const posts = await getPosts()
-
-    if (posts.length === 0) {
-      return (
-        <EmptyState
-          title="No posts found"
-          description="Create your first post to get started."
-          action={
-            <Link href="/dashboard/posts/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Post
-              </Button>
-            </Link>
-          }
-        />
-      )
-    }
-
-    return <PostsTable posts={posts} onPostDeleted={() => {}} />
-  } catch (error) {
-    return (
-      <ErrorState
-        title="Failed to load posts"
-        description="There was an error loading your posts. Please try again."
-      />
-    )
-  }
-}
-
-export default function PostsPage() {
   return (
-    <div className="space-y-6">
-      <DashboardHeader
-        heading="Posts Management"
-        text="Create and manage your blog posts."
-      >
-        <Link href="/dashboard/posts/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Post
-          </Button>
-        </Link>
-      </DashboardHeader>
-
-      <Suspense fallback={<DashboardLoading />}>
-        <PostsList />
+    <DashboardShell
+      title={posts.navigation.title}
+      description="Manage your blog posts"
+      action={
+        <Button asChild>
+          <Link href="/dashboard/posts/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            New Post
+          </Link>
+        </Button>
+      }
+    >
+      <Suspense fallback={
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="p-6 bg-card rounded-lg border animate-pulse">
+              <div className="space-y-3">
+                <div className="h-5 w-1/3 bg-muted rounded" />
+                <div className="h-8 w-1/2 bg-muted rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      }>
+        <Stats data={stats} />
       </Suspense>
-    </div>
+      
+      <Suspense fallback={<div className="mt-4 animate-pulse">
+        <div className="h-10 bg-muted rounded-lg mb-4" />
+        <div className="h-[400px] bg-muted rounded-lg" />
+      </div>}>
+        <div className="mt-4">
+          <Table data={postsData.items} />
+        </div>
+      </Suspense>
+    </DashboardShell>
   )
 }
