@@ -1,22 +1,49 @@
-# Authentication Guide
+# Authentication
 
-This guide covers implementing authentication in your Next.js dashboard using NextAuth.js.
+## Overview
+The authentication system is built using NextAuth.js, providing secure, flexible, and scalable authentication with support for multiple providers, role-based access control, and session management.
 
-## Basic Setup
+## Features
 
-1. **Install Dependencies**:
-```bash
-npm install next-auth @prisma/client bcryptjs
-npm install -D @types/bcryptjs
-```
+### 1. Core Features
+- [x] Email/Password authentication
+- [x] OAuth providers (Google, GitHub)
+- [x] Role-based access control
+- [x] Session management
+- [x] Protected routes
+- [x] Middleware protection
+- [x] Token refresh
+- [x] Remember me
+- [x] Password reset
+- [x] Email verification
 
-2. **Configure NextAuth.js**:
+### 2. Security
+- [x] Password hashing
+- [x] CSRF protection
+- [x] Rate limiting
+- [x] Session invalidation
+- [x] Secure cookie handling
+- [x] HTTP-only cookies
+- [x] XSS protection
+- [x] Secure headers
 
+### 3. User Management
+- [x] User registration
+- [x] Profile management
+- [x] Role management
+- [x] Permission management
+- [x] Account linking
+- [x] Account deletion
+- [x] Session management
+- [x] Activity logging
+
+## Implementation
+
+### 1. NextAuth Configuration
 ```typescript
-// lib/auth.ts
+// src/lib/auth.ts
 import { NextAuthOptions } from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
+import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import { compare } from 'bcryptjs'
 
@@ -26,171 +53,205 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   pages: {
-    signIn: '/login',
-    error: '/error',
+    signIn: '/auth/login',
+    error: '/auth/error',
+    verifyRequest: '/auth/verify',
   },
   providers: [
-    CredentialsProvider({
-      name: 'credentials',
+    Credentials({
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Invalid credentials')
+          return null
         }
 
         const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
+          where: { email: credentials.email },
         })
 
-        if (!user || !user.password) {
-          throw new Error('User not found')
+        if (!user) {
+          return null
         }
 
         const isValid = await compare(credentials.password, user.password)
 
         if (!isValid) {
-          throw new Error('Invalid password')
+          return null
         }
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
         }
       },
     }),
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    GitHub({
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    }),
   ],
   callbacks: {
-    async session({ token, session }) {
-      if (token) {
-        session.user.id = token.id
-        session.user.name = token.name
-        session.user.email = token.email
+    async session({ session, token }) {
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: token.id,
+          role: token.role,
+        },
       }
-
-      return session
     },
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id
-        token.email = user.email
+        return {
+          ...token,
+          id: user.id,
+          role: user.role,
+        }
       }
-
       return token
     },
   },
 }
 ```
 
-3. **Create API Route**:
-
+### 2. Middleware Protection
 ```typescript
-// app/api/auth/[...nextauth]/route.ts
-import NextAuth from 'next-auth'
-import { authOptions } from '@/lib/auth'
-
-const handler = NextAuth(authOptions)
-
-export { handler as GET, handler as POST }
-```
-
-## Protected Routes
-
-1. **Middleware for Route Protection**:
-
-```typescript
-// middleware.ts
-import { getToken } from 'next-auth/jwt'
+// src/middleware.ts
+import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  })
+export default withAuth(
+  function middleware(req) {
+    const token = req.nextauth.token
+    const isAuth = !!token
+    const isAuthPage = req.nextUrl.pathname.startsWith('/auth')
 
-  if (!token) {
-    const url = new URL('/login', request.url)
-    url.searchParams.set('callbackUrl', request.url)
-    return NextResponse.redirect(url)
-  }
-
-  return NextResponse.next()
-}
-
-export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/api/dashboard/:path*',
-  ],
-}
-```
-
-2. **Protected API Routes**:
-
-```typescript
-// lib/api-middlewares.ts
-import { getServerSession } from 'next-auth'
-import { NextResponse } from 'next/server'
-import { authOptions } from '@/lib/auth'
-
-export async function withAuth(handler: Function) {
-  return async function (req: Request, ...args: any[]) {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return new NextResponse('Unauthorized', { status: 401 })
+    if (isAuthPage) {
+      if (isAuth) {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+      return null
     }
 
-    return handler(req, ...args)
+    if (!isAuth) {
+      let from = req.nextUrl.pathname
+      if (req.nextUrl.search) {
+        from += req.nextUrl.search
+      }
+
+      return NextResponse.redirect(
+        new URL(`/auth/login?from=${encodeURIComponent(from)}`, req.url)
+      )
+    }
+
+    if (req.nextUrl.pathname.startsWith('/admin') && token?.role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token,
+    },
   }
+)
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/admin/:path*', '/auth/:path*'],
 }
-
-// Usage in API route:
-import { withAuth } from '@/lib/api-middlewares'
-
-export const GET = withAuth(async (req: Request) => {
-  // Your protected API logic here
-})
 ```
 
-## Login Form
+### 3. Role-Based Guards
+```typescript
+// src/lib/auth/guards.ts
+import { getServerSession } from 'next-auth/next'
+import { redirect } from 'next/navigation'
+import { authOptions } from '@/lib/auth'
 
-```tsx
+export async function requireAuth() {
+  const session = await getServerSession(authOptions)
+  
+  if (!session) {
+    redirect('/auth/login')
+  }
+  
+  return session
+}
+
+export async function requireAdmin() {
+  const session = await requireAuth()
+  
+  if (session.user.role !== 'ADMIN') {
+    redirect('/dashboard')
+  }
+  
+  return session
+}
+
+export async function withRole(role: string) {
+  const session = await requireAuth()
+  
+  if (session.user.role !== role) {
+    redirect('/dashboard')
+  }
+  
+  return session
+}
+```
+
+## Components
+
+### 1. Auth Provider
+```typescript
+// src/components/providers/auth-provider.tsx
 'use client'
 
-import { useState } from 'react'
+import { SessionProvider } from 'next-auth/react'
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return <SessionProvider>{children}</SessionProvider>
+}
+```
+
+### 2. Login Form
+```typescript
+// src/components/auth/login-form.tsx
+'use client'
+
 import { signIn } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email(),
+  password: z.string().min(8),
+  remember: z.boolean().default(false),
 })
 
 export function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
-  const [error, setError] = useState<string | null>(null)
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm({
+  const from = searchParams.get('from') || '/dashboard'
+  
+  const form = useForm({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      remember: false,
+    },
   })
-
+  
   const onSubmit = async (data: z.infer<typeof loginSchema>) => {
     try {
       const result = await signIn('credentials', {
@@ -198,104 +259,38 @@ export function LoginForm() {
         email: data.email,
         password: data.password,
       })
-
-      if (!result?.error) {
-        router.push(callbackUrl)
-      } else {
-        setError('Invalid email or password')
+      
+      if (result?.error) {
+        form.setError('root', { message: 'Invalid credentials' })
+        return
       }
+      
+      window.location.href = from
     } catch (error) {
-      setError('An error occurred. Please try again.')
+      form.setError('root', { message: 'Something went wrong' })
     }
   }
-
+  
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {error && (
-        <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
-          {error}
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
-          Email
-        </label>
-        <input
-          {...register('email')}
-          type="email"
-          className="w-full p-2 border rounded-md"
-        />
-        {errors.email && (
-          <p className="text-sm text-red-500">{errors.email.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="password" className="text-sm font-medium">
-          Password
-        </label>
-        <input
-          {...register('password')}
-          type="password"
-          className="w-full p-2 border rounded-md"
-        />
-        {errors.password && (
-          <p className="text-sm text-red-500">{errors.password.message}</p>
-        )}
-      </div>
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full p-2 text-white bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50"
-      >
-        {isSubmitting ? 'Signing in...' : 'Sign in'}
-      </button>
-    </form>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        {/* Form fields */}
+      </form>
+    </Form>
   )
 }
 ```
 
-## Session Management
+## Usage Examples
 
-1. **Client-Side Session**:
-
-```tsx
-'use client'
-
-import { useSession } from 'next-auth/react'
-
-export function ProfileButton() {
-  const { data: session } = useSession()
-
-  if (!session) return null
-
-  return (
-    <div className="flex items-center gap-2">
-      <span>{session.user.name}</span>
-      <button onClick={() => signOut()}>
-        Sign out
-      </button>
-    </div>
-  )
-}
-```
-
-2. **Server-Side Session**:
-
-```tsx
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+### 1. Protected Route
+```typescript
+// src/app/dashboard/page.tsx
+import { requireAuth } from '@/lib/auth/guards'
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
-
-  if (!session) {
-    redirect('/login')
-  }
-
+  const session = await requireAuth()
+  
   return (
     <div>
       <h1>Welcome, {session.user.name}</h1>
@@ -304,89 +299,134 @@ export default async function DashboardPage() {
 }
 ```
 
+### 2. Admin Route
+```typescript
+// src/app/admin/page.tsx
+import { requireAdmin } from '@/lib/auth/guards'
+
+export default async function AdminPage() {
+  const session = await requireAdmin()
+  
+  return (
+    <div>
+      <h1>Admin Dashboard</h1>
+    </div>
+  )
+}
+```
+
+### 3. Client-Side Protection
+```typescript
+'use client'
+
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+
+export function AdminComponent() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  
+  if (status === 'loading') {
+    return <div>Loading...</div>
+  }
+  
+  if (status === 'unauthenticated') {
+    router.push('/auth/login')
+    return null
+  }
+  
+  if (session.user.role !== 'ADMIN') {
+    router.push('/dashboard')
+    return null
+  }
+  
+  return <div>Admin Only Content</div>
+}
+```
+
 ## Best Practices
 
-1. **Password Hashing**:
+1. **Security**
+   - Use HTTPS in production
+   - Implement proper password hashing
+   - Use secure session management
+   - Implement rate limiting
+   - Follow OAuth best practices
+   - Use HTTP-only cookies
+   - Implement CSRF protection
+
+2. **User Experience**
+   - Clear error messages
+   - Proper loading states
+   - Remember user preferences
+   - Smooth redirects
+   - Progressive enhancement
+   - Proper form validation
+
+3. **Performance**
+   - Optimize token size
+   - Implement proper caching
+   - Use efficient database queries
+   - Minimize client-side code
+   - Implement proper error handling
+
+4. **Maintenance**
+   - Use TypeScript
+   - Write tests
+   - Document code
+   - Monitor errors
+   - Log important events
+   - Keep dependencies updated
+
+## Testing
+
+### 1. Unit Tests
 ```typescript
-import { hash } from 'bcryptjs'
-
-async function hashPassword(password: string) {
-  return await hash(password, 12)
-}
-
-// Usage when creating user
-const hashedPassword = await hashPassword(password)
-await prisma.user.create({
-  data: {
-    email,
-    password: hashedPassword,
-  },
+describe('Auth Guards', () => {
+  it('should redirect unauthenticated users', async () => {
+    const redirect = jest.fn()
+    
+    await requireAuth()
+    
+    expect(redirect).toHaveBeenCalledWith('/auth/login')
+  })
 })
 ```
 
-2. **Error Handling**:
+### 2. Integration Tests
 ```typescript
-export async function login(
-  credentials: Record<'email' | 'password', string>
-) {
-  try {
+describe('Login Flow', () => {
+  it('should authenticate user with valid credentials', async () => {
     const result = await signIn('credentials', {
       redirect: false,
-      ...credentials,
+      email: 'test@example.com',
+      password: 'password',
     })
-
-    if (result?.error) {
-      throw new Error(result.error)
-    }
-
-    return { success: true }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
-  }
-}
+    
+    expect(result?.error).toBeUndefined()
+  })
+})
 ```
 
-3. **Session Types**:
-```typescript
-// types/next-auth.d.ts
-import { DefaultSession } from 'next-auth'
+## Future Improvements
 
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id: string
-      role: string
-    } & DefaultSession['user']
-  }
+1. **Enhanced Security**
+   - [ ] Two-factor authentication
+   - [ ] Hardware key support
+   - [ ] Biometric authentication
+   - [ ] Session management UI
+   - [ ] Advanced rate limiting
 
-  interface User {
-    role: string
-  }
-}
-```
+2. **User Management**
+   - [ ] User impersonation
+   - [ ] Advanced role management
+   - [ ] Team management
+   - [ ] Organization support
+   - [ ] Audit logging
 
-4. **Protected API Wrapper**:
-```typescript
-export function withProtectedApi(handler: Function) {
-  return async function (req: Request, ...args: any[]) {
-    try {
-      const session = await getServerSession(authOptions)
-      
-      if (!session) {
-        return new NextResponse('Unauthorized', { status: 401 })
-      }
-
-      // Add user info to request
-      const reqWithUser = Object.assign(req, { user: session.user })
-      
-      return handler(reqWithUser, ...args)
-    } catch (error) {
-      console.error('[API_ERROR]', error)
-      return new NextResponse('Internal Error', { status: 500 })
-    }
-  }
-}
-```
+3. **Integration**
+   - [ ] More OAuth providers
+   - [ ] SAML support
+   - [ ] LDAP integration
+   - [ ] Custom auth flows
+   - [ ] API key management
