@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "create-user": "tsx scripts/create-user.ts",
-    "create-page": "tsx scripts/create-page.ts"
+    "create-page": "tsx scripts/create-page.ts",
+    "create-model": "tsx scripts/create-model.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
