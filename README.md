@@ -1,6 +1,6 @@
 # Next.js Dashboard
 
-A modern dashboard application built with Next.js 13+, featuring user authentication, post management, and real-time statistics.
+A modern dashboard application built with Next.js 15+, featuring user authentication, post management, and real-time statistics.
 
 This is build by AI with ❤️, thanks to Windsurf.
 
