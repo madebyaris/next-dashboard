@@ -8,7 +8,7 @@ A modern, type-safe dashboard application built with Next.js 15+, featuring:
 - 🛠️ Builder pattern for flexible components
 
 ## Documentation
-- [Instruction](INSTRUCTION.md) About how this project is built and what you can expect from this project.
+- [Instruction](instruction.md) About how this project is built and what you can expect from this project.
 - [HOW TO USE](docs/INSTRUCTION.md) About how to use this project for the first time.
 - [GUIDE](docs/GUIDE.md) If you are Developer, you can use this guide to understand the code and how to extend this project.
 
