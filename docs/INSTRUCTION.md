@@ -4,59 +4,144 @@
 
 ### 1. Creating a New Resource
 
-1. Use the CLI to generate the model:
-```bash
-pnpm create-model --name="Product" --fields="
-  name: z.string().min(1),
-  price: z.number().min(0),
-  status: z.enum(['active', 'inactive'])
-"
-```
-
-2. Create the resource configuration:
+1. Create the resource schema:
 ```typescript
-// src/resources/products/index.ts
-import { createResource } from '@/builders/resource'
+// src/resources/products/schema.ts
 import { z } from 'zod'
 
-export const products = createResource('products')
-  .title('Products')
-  .description('Manage your products')
-  .schema(z.object({
-    name: z.string().min(1, 'Name is required'),
-    price: z.number().min(0, 'Price must be positive'),
-    status: z.enum(['active', 'inactive'])
-  }))
-  .table(table => table
-    .column('name', 'Name')
-    .column('price', 'Price', { format: 'currency' })
-    .column('status', 'Status', { type: 'badge' })
-  )
-  .form(form => form
-    .section('Basic Information')
-    .field('name', 'text')
-    .field('price', 'number')
-    .field('status', 'select', {
-      options: [
-        { label: 'Active', value: 'active' },
-        { label: 'Inactive', value: 'inactive' }
-      ]
-    })
-  )
+export const productSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, 'Title is required'),
+  description: z.string(),
+  price: z.number().min(0, 'Price must be positive'),
+  status: z.enum(['draft', 'published']),
+  createdAt: z.date(),
+  updatedAt: z.date()
+})
+
+export type Product = z.infer<typeof productSchema>
 ```
 
-3. Add the resource to your navigation:
+2. Define resource routes:
 ```typescript
-// src/config/navigation.ts
-import { products } from '@/resources/products'
-
-export const navigation = [
-  {
-    title: 'Products',
-    href: products.getPath(),
-    icon: Package
+// src/resources/products/routes.ts
+export const routes = {
+  list: '/dashboard/products',
+  new: '/dashboard/products/new',
+  edit: (id: string) => `/dashboard/products/${id}`,
+  api: {
+    list: '/api/products',
+    create: '/api/products',
+    update: (id: string) => `/api/products/${id}`,
+    delete: (id: string) => `/api/products/${id}`,
   }
-]
+} as const
+```
+
+3. Implement resource actions:
+```typescript
+// src/resources/products/actions.ts
+import { routes } from './routes'
+import type { Product } from './schema'
+
+export async function list() {
+  const response = await fetch(routes.api.list)
+  const data = await response.json()
+  return data
+}
+
+export async function create(data: Omit<Product, 'id'>) {
+  const response = await fetch(routes.api.create, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+  return response.json()
+}
+
+export async function edit(id: string) {
+  window.location.href = routes.edit(id)
+}
+
+export async function delete_(id: string) {
+  await fetch(routes.api.delete(id), { method: 'DELETE' })
+}
+```
+
+4. Create resource components:
+```typescript
+// src/resources/products/components/table.tsx
+import { DataTable } from '@/components/ui/data-table'
+import { products } from '..'
+import type { Product } from '../schema'
+
+interface ProductTableProps {
+  data: Product[]
+}
+
+export function Table({ data }: ProductTableProps) {
+  return (
+    <DataTable
+      columns={products.table.columns}
+      data={data}
+      searchKey="title"
+      pageSize={10}
+    />
+  )
+}
+```
+
+5. Define the resource:
+```typescript
+// src/resources/products/index.ts
+import { FileText } from 'lucide-react'
+import { productSchema, type Product } from './schema'
+import { routes } from './routes'
+import * as productActions from './actions'
+import { defineResource } from '../config'
+import { columns } from '@/builders/table'
+
+const { delete_, ...actions } = productActions
+
+export const products = defineResource<Product>({
+  name: 'products',
+  path: routes.list,
+  navigation: {
+    title: 'Products',
+    icon: FileText,
+    path: routes.list,
+    roles: ['ADMIN', 'EDITOR'],
+  },
+  schema: productSchema,
+  table: {
+    columns: [
+      columns.text('title', 'Title', { sortable: true, searchable: true }),
+      columns.text('description', 'Description'),
+      columns.number('price', 'Price', { sortable: true }),
+      columns.badge('status', 'Status', {
+        color: {
+          draft: 'gray',
+          published: 'green',
+        },
+      }),
+      columns.actions('id', [
+        {
+          icon: FileText,
+          label: 'Edit',
+          onClick: (row: Product) => actions.edit(row.id),
+        },
+        {
+          icon: Trash2,
+          label: 'Delete',
+          onClick: (row: Product) => delete_(row.id),
+        },
+      ]),
+    ],
+  },
+  actions: {
+    ...actions,
+    delete: delete_,
+  },
+})
 ```
 
 ### 2. Creating a Dashboard Widget
