@@ -15,22 +15,27 @@ And you can start using our docs guide:
   - Email/Password authentication
   - Protected routes and API endpoints
   - Session management with NextAuth.js
+  - Role-based access control (ADMIN, EDITOR, VIEWER)
 
 - 📊 **Dashboard Overview**
   - Real-time statistics display
   - Recent users and posts overview
   - Interactive data cards
+  - Role-based dashboard views
 
 - 📝 **Post Management**
   - Create, read, update, and delete posts
   - Draft/Publish status
   - Rich text content
   - Author tracking
+  - Role-based permissions
 
 - 👥 **User Management**
   - User registration and login
   - Profile management
   - Activity tracking
+  - CLI tools for user creation
+  - Role-based permissions
 
 ## Tech Stack
 
@@ -41,6 +46,7 @@ And you can start using our docs guide:
 - **UI Components**: shadcn/ui
 - **Form Handling**: React Hook Form + Zod
 - **State Management**: React Context + Hooks
+- **CLI Tools**: Node.js scripts with TypeScript
 
 ## Getting Started
 
@@ -52,7 +58,7 @@ And you can start using our docs guide:
 
 2. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. Set up environment variables:
@@ -63,15 +69,37 @@ And you can start using our docs guide:
 
 4. Set up the database:
    ```bash
-   npx prisma db push
+   pnpm prisma db push
    ```
 
-5. Run the development server:
+5. Create an admin user:
    ```bash
-   npm run dev
+   pnpm create-user --name="Admin User" --email="admin@example.com" --password="admin123" --role="ADMIN"
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+6. Run the development server:
+   ```bash
+   pnpm dev
+   ```
+
+7. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## CLI Tools
+
+### User Management
+
+Create users directly from the terminal:
+
+```bash
+pnpm create-user --name="User Name" --email="user@example.com" --password="password" --role="ROLE"
+```
+
+Available roles:
+- ADMIN: Full access to all features
+- EDITOR: Can manage posts and view users
+- VIEWER: Can view published content only
+
+For more details about CLI tools, check the [CLI Tools Guide](docs/GUIDE.md#cli-tools).
 
 ## Environment Variables
 
@@ -94,12 +122,35 @@ src/
 ├── app/                 # App router pages
 ├── components/          # React components
 │   ├── dashboard/      # Dashboard-specific components
-│   ├── posts/         # Post management components
-│   └── ui/            # Reusable UI components
+│   ├── posts/          # Post management components
+│   └── ui/             # Reusable UI components
 ├── lib/                # Utility functions and configurations
+├── scripts/           # CLI tools and scripts
 ├── styles/            # Global styles
 └── types/             # TypeScript type definitions
 ```
+
+## Role-Based Access
+
+The application implements role-based access control:
+
+- **ADMIN**
+  - Full access to all features
+  - Can manage users and roles
+  - Can manage all posts
+  - Access to system settings
+
+- **EDITOR**
+  - Can create and edit posts
+  - Can view user profiles
+  - Cannot manage users or roles
+  - Limited system settings access
+
+- **VIEWER**
+  - Can view published posts
+  - Can view own profile
+  - No management capabilities
+  - No settings access
 
 ## Contributing
 

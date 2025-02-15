@@ -7,6 +7,7 @@ This guide will help you understand how to create dashboard pages and implement 
 - [Implementing CRUD Operations](#implementing-crud-operations)
 - [Common Components](#common-components)
 - [Best Practices](#best-practices)
+- [CLI Tools](#cli-tools)
 
 ## Creating a New Dashboard Page
 
@@ -378,3 +379,68 @@ Remember to:
 - Add proper TypeScript types
 - Follow the established coding patterns
 - Test your changes before committing
+
+## CLI Tools
+
+### Creating Users via Terminal
+
+The dashboard includes a CLI tool for creating users directly from the terminal. This is particularly useful for:
+- Creating the initial admin user
+- Batch user creation
+- System automation
+
+#### Usage
+
+```bash
+pnpm create-user --name="User Name" --email="user@example.com" --password="password" --role="ROLE"
+```
+
+#### Parameters
+
+| Parameter    | Description                                      | Required | Default |
+|-------------|--------------------------------------------------|----------|---------|
+| --name      | User's full name                                 | Yes      | -       |
+| --email     | User's email address                             | Yes      | -       |
+| --password  | User's password (minimum 6 characters)           | Yes      | -       |
+| --role      | User's role (ADMIN, EDITOR, or VIEWER)          | No       | VIEWER  |
+
+#### Examples
+
+1. Create an admin user:
+```bash
+pnpm create-user --name="Admin User" --email="admin@example.com" --password="admin123" --role="ADMIN"
+```
+
+2. Create an editor:
+```bash
+pnpm create-user --name="Editor User" --email="editor@example.com" --password="editor123" --role="EDITOR"
+```
+
+3. Create a viewer:
+```bash
+pnpm create-user --name="Viewer User" --email="viewer@example.com" --password="viewer123"
+```
+
+#### Response
+
+The command will return a JSON object with the created user's details:
+
+```json
+{
+  "id": "clh...",
+  "name": "Admin User",
+  "email": "admin@example.com",
+  "role": "ADMIN",
+  "createdAt": "2024-02-15T..."
+}
+```
+
+#### Error Handling
+
+The script includes validation and error handling for:
+- Invalid email format
+- Password length (minimum 6 characters)
+- Duplicate email addresses
+- Invalid role values
+
+Error messages will be displayed in the terminal with specific details about the validation failure.
