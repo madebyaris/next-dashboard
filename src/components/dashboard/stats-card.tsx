@@ -5,16 +5,16 @@ import { LucideIcon } from "lucide-react"
 
 interface StatsCardProps {
   title: string
-  value: string | number
-  icon: LucideIcon
+  value: number
   description?: string
+  icon: LucideIcon
 }
 
 export function StatsCard({
   title,
   value,
-  icon: Icon,
   description,
+  icon: Icon,
 }: StatsCardProps) {
   return (
     <Card>
@@ -25,7 +25,7 @@ export function StatsCard({
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-bold">{value.toLocaleString()}</div>
         {description && (
           <p className="text-xs text-muted-foreground">
             {description}

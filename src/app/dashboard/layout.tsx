@@ -11,116 +11,101 @@ import {
   FileText, 
   User, 
   LogOut,
-  Menu
+  Menu,
+  LayoutDashboard,
+  Settings
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, ReactNode } from 'react'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
-const navigation = [
-  { name: 'Users', href: '/dashboard/users', icon: Users },
-  { name: 'Posts', href: '/dashboard/posts', icon: FileText },
-  { name: 'Profile', href: '/dashboard/profile', icon: User },
+interface DashboardLayoutProps {
+  children: ReactNode
+}
+
+interface NavItem {
+  title: string
+  href: string
+  icon: typeof LayoutDashboard
+  roles: ('ADMIN' | 'EDITOR' | 'VIEWER')[]
+}
+
+const navItems: NavItem[] = [
+  {
+    title: 'Overview',
+    href: '/dashboard',
+    icon: LayoutDashboard,
+    roles: ['ADMIN', 'EDITOR', 'VIEWER'],
+  },
+  {
+    title: 'Users',
+    href: '/dashboard/users',
+    icon: Users,
+    roles: ['ADMIN'],
+  },
+  {
+    title: 'Posts',
+    href: '/dashboard/posts',
+    icon: FileText,
+    roles: ['ADMIN', 'EDITOR', 'VIEWER'],
+  },
+  {
+    title: 'Settings',
+    href: '/dashboard/settings',
+    icon: Settings,
+    roles: ['ADMIN', 'EDITOR', 'VIEWER'],
+  },
 ]
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+export default async function DashboardLayout({ children }: DashboardLayoutProps) {
+  const session = await getServerSession(authOptions)
+  if (!session) redirect('/login')
 
-  if (status === 'loading') {
-    return <div className="flex items-center justify-center min-h-screen">
-      Loading...
-    </div>
-  }
-
-  if (status === 'unauthenticated') {
-    router.push('/login')
-    return null
-  }
-
-  const handleLogout = async () => {
-    await signOut({ redirect: false })
-    router.push('/login')
-  }
+  const userRole = session.user.role || 'VIEWER'
+  const filteredNavItems = navItems.filter(item => item.roles.includes(userRole))
 
   return (
-    <div className="min-h-screen">
-      {/* Mobile sidebar toggle */}
-      <div className="lg:hidden fixed top-0 left-0 w-full bg-background z-50 p-4 border-b">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          <Menu className="h-6 w-6" />
-        </Button>
-      </div>
-
+    <div className="flex h-screen">
       {/* Sidebar */}
-      <div
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-background border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        )}
-      >
+      <aside className="hidden w-64 border-r bg-gray-50/40 dark:bg-gray-800/40 lg:block">
         <div className="flex h-full flex-col">
-          {/* Sidebar header */}
-          <div className="flex h-16 items-center px-6 border-b">
-            <h2 className="text-lg font-semibold">Dashboard</h2>
+          <div className="flex h-14 items-center border-b px-4">
+            <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+              <LayoutDashboard className="h-6 w-6" />
+              <span>Dashboard</span>
+            </Link>
           </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            {navigation.map((item) => {
-              const isActive = pathname.startsWith(item.href)
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center px-3 py-2 text-sm font-medium rounded-md',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  )}
-                >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
-                </Link>
-              )
-            })}
+          <nav className="flex-1 space-y-1 p-4">
+            {filteredNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+              >
+                <item.icon className="h-5 w-5" />
+                {item.title}
+              </Link>
+            ))}
           </nav>
-
-          {/* Sidebar footer */}
           <div className="border-t p-4">
-            <div className="mb-4 px-3 text-sm text-muted-foreground">
-              Signed in as {session?.user?.name || session?.user?.email}
-            </div>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={handleLogout}
+            <Link
+              href="/api/auth/signout"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              Logout
-            </Button>
+              <LogOut className="h-5 w-5" />
+              Sign Out
+            </Link>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* Main content */}
-      <div className={cn(
-        'lg:pl-64 pt-16 lg:pt-0',
-        sidebarOpen && 'lg:pl-64'
-      )}>
-        <main className="py-6 px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 overflow-y-auto">
+        <div className="container mx-auto p-6">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

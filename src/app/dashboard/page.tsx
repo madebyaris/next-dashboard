@@ -1,88 +1,68 @@
-'use client'
-
-import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
-import { Users, FileText, Settings } from 'lucide-react'
+import { Suspense } from 'react'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { PageHeader } from '@/components/dashboard/page-header'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { RecentPosts } from '@/components/dashboard/recent-posts'
 import { RecentUsers } from '@/components/dashboard/recent-users'
-import { DashboardLoading } from '@/components/dashboard/loading'
-import { ErrorState } from '@/components/dashboard/error-state'
+import { Users, FileText, Eye } from 'lucide-react'
 
-interface DashboardStats {
-  stats: {
-    totalUsers: number
-    totalPosts: number
-    totalSettings: number
+async function getStats() {
+  const [totalUsers, totalPosts, publishedPosts] = await Promise.all([
+    prisma.user.count(),
+    prisma.post.count(),
+    prisma.post.count({ where: { published: true } }),
+  ])
+
+  return {
+    totalUsers,
+    totalPosts,
+    publishedPosts,
   }
 }
 
-export default function DashboardPage() {
-  const { data: session, status } = useSession()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch('/api/dashboard/stats')
-        const data = await response.json()
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch dashboard stats')
-        }
-        
-        setStats(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong')
-      }
-    }
-
-    fetchStats()
-  }, [])
-
-  if (status === 'loading' || !stats) {
-    return <DashboardLoading />
-  }
-
-  if (error) {
-    return <ErrorState title={error} retry={() => window.location.reload()} />
-  }
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions)
+  const stats = await getStats()
 
   return (
-    <div className="flex-1 space-y-6 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Welcome back, {session?.user?.name || 'User'}
-        </h2>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        heading="Dashboard"
+        text={`Welcome back, ${session?.user?.name || 'User'}!`}
+      />
 
-      {/* Stats Overview */}
+      {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatsCard
           title="Total Users"
-          value={stats.stats.totalUsers}
+          value={stats.totalUsers}
           icon={Users}
-          description="Registered users"
+          description="Total number of registered users"
         />
         <StatsCard
           title="Total Posts"
-          value={stats.stats.totalPosts}
+          value={stats.totalPosts}
           icon={FileText}
-          description="Published and draft posts"
+          description="Total number of posts created"
         />
         <StatsCard
-          title="Active Settings"
-          value={stats.stats.totalSettings}
-          icon={Settings}
-          description="System and user settings"
+          title="Published Posts"
+          value={stats.publishedPosts}
+          icon={Eye}
+          description="Number of posts published"
         />
       </div>
 
       {/* Recent Activity */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <RecentPosts />
-        <RecentUsers />
+      <div className="grid gap-6 md:grid-cols-2">
+        <Suspense fallback={<div>Loading recent posts...</div>}>
+          <RecentPosts />
+        </Suspense>
+        <Suspense fallback={<div>Loading recent users...</div>}>
+          <RecentUsers />
+        </Suspense>
       </div>
     </div>
   )

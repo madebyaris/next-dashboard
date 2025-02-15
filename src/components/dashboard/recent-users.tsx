@@ -8,36 +8,36 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { api } from '@/lib/api'
 import { DashboardLoading } from './loading'
 import { ErrorState } from './error-state'
+import { prisma } from '@/lib/prisma'
 
 interface User {
   id: string
   name: string | null
   email: string | null
-  createdAt: string
+  role: 'ADMIN' | 'EDITOR' | 'VIEWER'
+  createdAt: Date
 }
 
-export function RecentUsers() {
-  const [users, setUsers] = useState<User[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+async function getRecentUsers(): Promise<User[]> {
+  const users = await prisma.user.findMany({
+    take: 5,
+    orderBy: {
+      createdAt: 'desc',
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  })
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const data = await api.users.list()
-        setUsers(data.slice(0, 5)) // Only show 5 most recent users
-      } catch (err) {
-        setError('Failed to load recent users')
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  return users
+}
 
-    fetchUsers()
-  }, [])
-
-  if (isLoading) return <DashboardLoading />
-  if (error) return <ErrorState title={error} />
+export async function RecentUsers() {
+  const users = await getRecentUsers()
 
   return (
     <Card>
@@ -48,20 +48,16 @@ export function RecentUsers() {
         <div className="space-y-8">
           {users.map((user) => (
             <div key={user.id} className="flex items-center">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback>
-                  {user.name?.charAt(0).toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="ml-4 space-y-1">
-                <Link 
+              <div className="space-y-1">
+                <Link
                   href={`/dashboard/users/${user.id}`}
-                  className="text-sm font-medium leading-none hover:underline"
+                  className="font-medium hover:underline"
                 >
-                  {user.name || user.email}
+                  {user.name || user.email || 'Unknown User'}
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                  Joined {formatDistanceToNow(new Date(user.createdAt), { addSuffix: true })}
+                  {user.role.toLowerCase()} • joined{' '}
+                  {new Date(user.createdAt).toLocaleDateString()}
                 </p>
               </div>
             </div>

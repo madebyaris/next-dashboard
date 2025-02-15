@@ -7,40 +7,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'
 import { DashboardLoading } from './loading'
 import { ErrorState } from './error-state'
+import { prisma } from '@/lib/prisma'
 
 interface Post {
   id: string
   title: string
-  published: boolean
-  createdAt: string
+  createdAt: Date
   author: {
-    name: string
-    email: string
+    name: string | null
   }
 }
 
-export function RecentPosts() {
-  const [posts, setPosts] = useState<Post[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+async function getRecentPosts(): Promise<Post[]> {
+  const posts = await prisma.post.findMany({
+    take: 5,
+    orderBy: {
+      createdAt: 'desc',
+    },
+    include: {
+      author: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  })
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const data = await api.posts.list()
-        setPosts(data.slice(0, 5)) // Only show 5 most recent posts
-      } catch (err) {
-        setError('Failed to load recent posts')
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  return posts
+}
 
-    fetchPosts()
-  }, [])
-
-  if (isLoading) return <DashboardLoading />
-  if (error) return <ErrorState title={error} />
+export async function RecentPosts() {
+  const posts = await getRecentPosts()
 
   return (
     <Card>
@@ -52,22 +49,17 @@ export function RecentPosts() {
           {posts.map((post) => (
             <div key={post.id} className="flex items-center">
               <div className="space-y-1">
-                <Link 
+                <Link
                   href={`/dashboard/posts/${post.id}`}
-                  className="text-sm font-medium leading-none hover:underline"
+                  className="font-medium hover:underline"
                 >
                   {post.title}
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                  by {post.author.name || post.author.email} ·{' '}
-                  {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                  by {post.author.name || 'Unknown'} •{' '}
+                  {new Date(post.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              {!post.published && (
-                <div className="ml-auto">
-                  <span className="text-xs text-muted-foreground">Draft</span>
-                </div>
-              )}
             </div>
           ))}
         </div>
