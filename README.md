@@ -13,6 +13,18 @@ A modern, type-safe dashboard application built with Next.js 15+, featuring:
 - [HOW TO USE](docs/INSTRUCTION.md) About how to use this project for the first time.
 - [GUIDE](docs/GUIDE.md) If you are Developer, you can use this guide to understand the code and how to extend this project.
 
+## Donation
+If you like this project, you can buy me a coffee:
+<div align="center">
+  <a href="https://paypal.me/airs">
+    <img src="https://img.shields.io/badge/PayPal-Donate-blue?style=for-the-badge&logo=paypal" alt="Donate with PayPal" />
+  </a>
+  <a href="https://trakteer.id/madebyaris/tip">
+    <img src="https://img.shields.io/badge/Trakteer-Support-red?style=for-the-badge&logo=ko-fi" alt="Support on Trakteer" />
+  </a>
+</div>
+
+
 ## Features
 
 ### Authentication & Authorization
