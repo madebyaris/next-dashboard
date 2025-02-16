@@ -37,7 +37,7 @@ const columns: Column<Post>[] = [
     },
   },
   {
-    key: 'actions',
+    key: 'id',
     label: 'Actions',
     type: 'actions',
     actions: [

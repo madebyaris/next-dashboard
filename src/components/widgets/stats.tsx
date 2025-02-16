@@ -15,7 +15,7 @@ interface Stat {
   }
 }
 
-interface StatsWidgetProps {
+export interface StatsWidgetProps {
   stats: Stat[]
 }
 

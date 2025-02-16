@@ -2,8 +2,28 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './prisma'
 import { compare } from 'bcryptjs'
+import { getServerSession } from 'next-auth'
+import { signIn, signOut } from 'next-auth/react'
 
 type Role = 'ADMIN' | 'EDITOR' | 'VIEWER'
+
+export interface User {
+  id: string
+  email: string
+  name: string | null
+  role: Role
+}
+
+export interface AuthState {
+  user: User | null
+  isLoading: boolean
+}
+
+export interface AuthContextType extends AuthState {
+  login: (email: string, password: string) => Promise<void>
+  signup: (email: string, password: string, name: string) => Promise<void>
+  logout: () => Promise<void>
+}
 
 declare module 'next-auth' {
   interface User {
@@ -107,4 +127,47 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: authSecret || 'fallback-secret-do-not-use-in-production',
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  const session = await getServerSession(authOptions)
+  return session?.user || null
+}
+
+export async function login(email: string, password: string): Promise<User> {
+  const result = await signIn('credentials', {
+    email,
+    password,
+    redirect: false,
+  })
+
+  if (result?.error) {
+    throw new Error(result.error)
+  }
+
+  const user = await getCurrentUser()
+  if (!user) {
+    throw new Error('Failed to get user after login')
+  }
+
+  return user
+}
+
+export async function signup(email: string, password: string, name: string): Promise<User> {
+  const response = await fetch('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, name }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.message || 'Failed to sign up')
+  }
+
+  return login(email, password)
+}
+
+export async function logout(): Promise<void> {
+  await signOut({ redirect: false })
 }
