@@ -1,409 +1,354 @@
-# Advanced Form Handling Guide
+# Forms
 
-This guide demonstrates how to create robust forms with validation, file uploads, and dynamic fields.
+## Overview
+The form system is built using a flexible builder pattern that allows for easy creation of complex forms with validation, conditional fields, and dynamic layouts.
 
-## Basic Form with Validation
+## Features
 
-```tsx
-'use client'
+### 1. Field Types
+- [x] Text input
+- [x] Textarea
+- [x] Number
+- [x] Email
+- [x] Password
+- [x] Select
+- [x] Multi-select
+- [x] Checkbox
+- [x] Radio
+- [x] Date
+- [x] Time
+- [x] DateTime
+- [x] File upload
+- [x] Rich text editor
+- [x] Code editor
+- [x] Color picker
+- [x] Toggle
 
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { toast } from '@/components/ui/toast'
+### 2. Form Features
+- [x] Field validation with Zod
+- [x] Conditional fields
+- [x] Form sections
+- [x] Grid layouts
+- [x] Field dependencies
+- [x] Custom field components
+- [x] Form actions
+- [x] Error handling
+- [x] Loading states
+- [x] Field masking
+- [x] Auto-save
 
-const formSchema = z.object({
-  title: z
-    .string()
-    .min(3, 'Title must be at least 3 characters')
-    .max(50, 'Title must be less than 50 characters'),
-  description: z
-    .string()
-    .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must be less than 500 characters'),
-  email: z.string().email('Invalid email address'),
-  phone: z
-    .string()
-    .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number')
-    .optional(),
-  tags: z.array(z.string()).min(1, 'At least one tag is required'),
-})
+### 3. Validation
+- [x] Built-in validation rules
+- [x] Custom validation rules
+- [x] Async validation
+- [x] Field-level validation
+- [x] Form-level validation
+- [x] Error messages
+- [x] Validation states
 
-type FormValues = z.infer<typeof formSchema>
+## Implementation
 
-export function AdvancedForm() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [tags, setTags] = useState<string[]>([])
+### 1. Form Builder
+```typescript
+// src/builders/form.ts
+export class FormBuilder {
+  private config: FormConfig = {
+    sections: [],
+  }
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      email: '',
-      phone: '',
-      tags: [],
-    },
+  public title(title: string): this {
+    this.config.title = title
+    return this
+  }
+
+  public section(section: FormSection): this {
+    this.config.sections.push(section)
+    return this
+  }
+
+  public validation(schema: z.ZodType<any>): this {
+    this.config.validationSchema = schema
+    return this
+  }
+
+  public build(): FormConfig {
+    return this.config
+  }
+}
+```
+
+### 2. Form Configuration
+```typescript
+interface FormConfig {
+  title?: string
+  description?: string
+  sections: FormSection[]
+  actions?: {
+    submit?: {
+      label?: string
+      redirect?: string
+    }
+    cancel?: {
+      label?: string
+      redirect?: string
+    }
+  }
+  validationSchema?: z.ZodType<any>
+}
+
+interface FormSection {
+  title?: string
+  description?: string
+  fields: FormField[]
+  columns?: number
+  collapsed?: boolean
+  collapsible?: boolean
+  conditions?: {
+    field: string
+    value: any
+    operator?: '=' | '!=' | '>' | '<' | '>=' | '<=' | 'contains'
+  }[]
+}
+
+interface FormField {
+  name: string
+  label: string
+  type: FieldType
+  placeholder?: string
+  helperText?: string
+  required?: boolean
+  disabled?: boolean
+  hidden?: boolean
+  validation?: z.ZodType<any>
+  options?: { label: string; value: any }[]
+  defaultValue?: any
+  width?: 'full' | '1/2' | '1/3' | '2/3' | '1/4' | '3/4'
+  prefix?: ReactNode
+  suffix?: ReactNode
+  conditions?: {
+    field: string
+    value: any
+    operator?: '=' | '!=' | '>' | '<' | '>=' | '<=' | 'contains'
+  }[]
+}
+```
+
+## Usage Examples
+
+### 1. Basic Form
+```typescript
+const productForm = createForm()
+  .title('Product Details')
+  .section({
+    title: 'Basic Information',
+    fields: [
+      fields.text('name', 'Product Name', { required: true }),
+      fields.number('price', 'Price', { required: true }),
+      fields.select('status', 'Status', [
+        { label: 'Draft', value: 'draft' },
+        { label: 'Published', value: 'published' },
+      ]),
+    ],
+  })
+  .validation(productSchema)
+  .build()
+```
+
+### 2. Complex Form
+```typescript
+const userForm = createForm()
+  .title('User Profile')
+  .section({
+    title: 'Personal Information',
+    fields: [
+      fields.text('name', 'Full Name', { required: true }),
+      fields.email('email', 'Email Address', { required: true }),
+      fields.password('password', 'Password', {
+        conditions: [{ field: 'isNewUser', value: true }],
+      }),
+    ],
+  })
+  .section({
+    title: 'Preferences',
+    collapsible: true,
+    fields: [
+      fields.select('theme', 'Theme', [
+        { label: 'Light', value: 'light' },
+        { label: 'Dark', value: 'dark' },
+      ]),
+      fields.toggle('notifications', 'Enable Notifications'),
+    ],
+  })
+  .build()
+```
+
+### 3. Form with Conditional Fields
+```typescript
+const orderForm = createForm()
+  .section({
+    title: 'Order Details',
+    fields: [
+      fields.select('type', 'Order Type', [
+        { label: 'Physical', value: 'physical' },
+        { label: 'Digital', value: 'digital' },
+      ]),
+      fields.text('shipping_address', 'Shipping Address', {
+        conditions: [{ field: 'type', value: 'physical' }],
+      }),
+      fields.email('delivery_email', 'Delivery Email', {
+        conditions: [{ field: 'type', value: 'digital' }],
+      }),
+    ],
+  })
+  .build()
+```
+
+## Components
+
+### 1. Form Component
+```typescript
+interface FormProps {
+  config: FormConfig
+  onSubmit: (data: any) => Promise<void>
+  defaultValues?: Record<string, any>
+}
+
+export function Form({ config, onSubmit, defaultValues }: FormProps) {
+  const form = useForm({
+    defaultValues,
+    resolver: zodResolver(config.validationSchema),
   })
 
-  const onSubmit = async (data: FormValues) => {
-    setIsSubmitting(true)
-    try {
-      const response = await fetch('/api/your-endpoint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) throw new Error('Submission failed')
-
-      toast({
-        title: 'Success',
-        description: 'Form submitted successfully',
-        variant: 'success',
-      })
-
-      form.reset()
-    } catch (error) {
-      console.error(error)
-      toast({
-        title: 'Error',
-        description: 'Failed to submit form',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleAddTag = (tag: string) => {
-    if (tag && !tags.includes(tag)) {
-      const newTags = [...tags, tag]
-      setTags(newTags)
-      form.setValue('tags', newTags)
-    }
-  }
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    const newTags = tags.filter(tag => tag !== tagToRemove)
-    setTags(newTags)
-    form.setValue('tags', newTags)
-  }
-
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormDescription>
-                Give your submission a clear title.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      {config.sections.map((section, index) => (
+        <FormSection
+          key={index}
+          section={section}
+          form={form}
         />
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone (optional)</FormLabel>
-              <FormControl>
-                <Input type="tel" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="tags"
-          render={() => (
-            <FormItem>
-              <FormLabel>Tags</FormLabel>
-              <div className="flex flex-wrap gap-2">
-                {tags.map(tag => (
-                  <div
-                    key={tag}
-                    className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="ml-2 text-muted-foreground hover:text-destructive"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                <Input
-                  placeholder="Add tag..."
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      handleAddTag(e.currentTarget.value)
-                      e.currentTarget.value = ''
-                    }
-                  }}
-                  className="w-32"
-                />
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex justify-end space-x-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-            disabled={isSubmitting}
-          >
-            Reset
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Submit'}
-          </Button>
-        </div>
-      </form>
-    </Form>
+      ))}
+    </form>
   )
 }
 ```
 
-## Features
+### 2. Field Components
+```typescript
+interface FieldProps {
+  field: FormField
+  form: UseFormReturn
+}
 
-1. **Validation**:
-   - Schema-based validation with Zod
-   - Real-time validation feedback
-   - Custom error messages
+export function Field({ field, form }: FieldProps) {
+  const { register, formState: { errors } } = form
 
-2. **Dynamic Fields**:
-   - Tag input with add/remove functionality
-   - Optional fields
-   - Field dependencies
+  switch (field.type) {
+    case 'text':
+      return (
+        <TextField
+          {...register(field.name)}
+          label={field.label}
+          error={errors[field.name]?.message}
+        />
+      )
+    // Other field types...
+  }
+}
+```
 
-3. **State Management**:
-   - Form state tracking
-   - Submission handling
-   - Reset functionality
+## Validation
 
-4. **Error Handling**:
-   - Field-level error messages
-   - Form-level error handling
-   - API error handling
+### 1. Schema Validation
+```typescript
+const productSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().min(0, 'Price must be positive'),
+  status: z.enum(['draft', 'published']),
+})
+```
+
+### 2. Custom Validation
+```typescript
+const customValidation = async (value: string) => {
+  const exists = await checkIfExists(value)
+  return exists ? 'Already exists' : true
+}
+```
 
 ## Best Practices
 
-1. **Validation**:
-   ```typescript
-   // Reusable validation schemas
-   export const userSchema = z.object({
-     name: z.string().min(2).max(50),
-     email: z.string().email(),
-     age: z.number().min(18).max(100).optional(),
-   })
+1. **Field Organization**
+   - Group related fields in sections
+   - Use clear and descriptive labels
+   - Provide helper text for complex fields
+   - Implement proper field validation
 
-   // Custom validation
-   const passwordSchema = z
-     .string()
-     .min(8)
-     .regex(/[A-Z]/, 'Need one uppercase character')
-     .regex(/[a-z]/, 'Need one lowercase character')
-     .regex(/[0-9]/, 'Need one number')
-   ```
+2. **User Experience**
+   - Show validation errors immediately
+   - Provide clear error messages
+   - Use appropriate field types
+   - Implement auto-save for long forms
 
-2. **Error Messages**:
-   ```typescript
-   // Custom error map
-   const customErrorMap: z.ZodErrorMap = (issue, ctx) => {
-     switch (issue.code) {
-       case z.ZodIssueCode.invalid_type:
-         return { message: 'Invalid type provided' }
-       case z.ZodIssueCode.too_small:
-         return { message: `Must be at least ${issue.minimum} characters` }
-       default:
-         return { message: ctx.defaultError }
-     }
-   }
+3. **Performance**
+   - Lazy load complex fields
+   - Optimize validation
+   - Use proper form state management
+   - Implement proper error handling
 
-   z.setErrorMap(customErrorMap)
-   ```
+4. **Accessibility**
+   - Use proper ARIA labels
+   - Implement keyboard navigation
+   - Provide error announcements
+   - Follow form best practices
 
-3. **Form Submission**:
-   ```typescript
-   const onSubmit = async (data: FormValues) => {
-     try {
-       // Show loading state
-       setIsSubmitting(true)
+## Testing
 
-       // Validate data
-       const validated = formSchema.parse(data)
+### 1. Unit Tests
+```typescript
+describe('Form Builder', () => {
+  it('should create a form with basic fields', () => {
+    const form = createForm()
+      .section({
+        fields: [
+          fields.text('name', 'Name'),
+        ],
+      })
+      .build()
 
-       // Make API call
-       const response = await fetch('/api/endpoint', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify(validated),
-       })
+    expect(form.sections[0].fields).toHaveLength(1)
+  })
+})
+```
 
-       // Handle response
-       if (!response.ok) throw new Error('Submission failed')
+### 2. Integration Tests
+```typescript
+describe('Form Component', () => {
+  it('should handle form submission', async () => {
+    const onSubmit = jest.fn()
+    render(<Form config={formConfig} onSubmit={onSubmit} />)
+    
+    // Test implementation
+  })
+})
+```
 
-       // Show success message
-       toast.success('Form submitted successfully')
+## Future Improvements
 
-       // Reset form
-       form.reset()
-     } catch (error) {
-       // Handle errors
-       console.error(error)
-       toast.error('Failed to submit form')
-     } finally {
-       // Reset loading state
-       setIsSubmitting(false)
-     }
-   }
-   ```
+1. **Enhanced Fields**
+   - [ ] Rich text editor improvements
+   - [ ] Advanced file upload
+   - [ ] Custom field types
+   - [ ] Field templates
 
-4. **Accessibility**:
-   ```tsx
-   <FormField
-     control={form.control}
-     name="email"
-     render={({ field }) => (
-       <FormItem>
-         <FormLabel htmlFor={field.name}>
-           Email
-           <span className="text-destructive">*</span>
-         </FormLabel>
-         <FormControl>
-           <Input
-             id={field.name}
-             type="email"
-             aria-describedby={`${field.name}-description`}
-             aria-invalid={!!form.formState.errors[field.name]}
-             {...field}
-           />
-         </FormControl>
-         <FormDescription id={`${field.name}-description`}>
-           We'll never share your email.
-         </FormDescription>
-         <FormMessage />
-       </FormItem>
-     )}
-   />
-   ```
+2. **Validation**
+   - [ ] Real-time validation
+   - [ ] Custom validation rules
+   - [ ] Validation groups
+   - [ ] Cross-field validation
 
-## Tips and Tricks
-
-1. **Form Reset Confirmation**:
-   ```typescript
-   const handleReset = () => {
-     if (form.formState.isDirty &&
-         window.confirm('Are you sure? All changes will be lost.')) {
-       form.reset()
-     }
-   }
-   ```
-
-2. **Auto-save Draft**:
-   ```typescript
-   useEffect(() => {
-     const saveTimeout = setTimeout(() => {
-       if (form.formState.isDirty) {
-         localStorage.setItem('formDraft', JSON.stringify(form.getValues()))
-       }
-     }, 1000)
-
-     return () => clearTimeout(saveTimeout)
-   }, [form.watch()])
-   ```
-
-3. **Conditional Fields**:
-   ```typescript
-   const watchNotificationType = form.watch('notificationType')
-
-   {watchNotificationType === 'email' && (
-     <FormField
-       control={form.control}
-       name="emailAddress"
-       render={({ field }) => (
-         <FormItem>
-           <FormLabel>Email Address</FormLabel>
-           <FormControl>
-             <Input {...field} />
-           </FormControl>
-         </FormItem>
-       )}
-     />
-   )}
-   ```
-
-4. **File Upload Preview**:
-   ```typescript
-   const [preview, setPreview] = useState<string>()
-
-   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-     const file = e.target.files?.[0]
-     if (file) {
-       const reader = new FileReader()
-       reader.onloadend = () => {
-         setPreview(reader.result as string)
-       }
-       reader.readAsDataURL(file)
-     }
-   }
-   ```
+3. **User Experience**
+   - [ ] Form wizards
+   - [ ] Multi-step forms
+   - [ ] Form preview
+   - [ ] Form versioning

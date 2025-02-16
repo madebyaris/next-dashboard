@@ -1,117 +1,240 @@
 # **Project Overview**
-This project focuses on building a Next.js (latest version) boilerplate with an emphasis on:
-- **CRUD Dashboard and UI**
-- **Authentication (Login, Signup, Logout)** using **[Better Auth](https://www.better-auth.com/)**.
-
-The design will utilize **ShadCN UI** ([ShadCN](https://ui.shadcn.com/)) for consistent and modern styling.
+This project is a modern Next.js 15+ dashboard boilerplate featuring:
+- **Resource-based Architecture** for modular and maintainable code
+- **Server Actions** for type-safe CRUD operations
+- **Authentication** using **NextAuth.js** with role-based access
+- **Beautiful UI** using **ShadcnUI** and **Tailwind CSS**
 
 ---
 
-## **Application Pages**
-### **Main Pages**
+## **Application Structure**
+### **Core Pages**
 - `/`  
-  A landing page with a simple "Hello World" message and an awesome design showcase.
-- `/login`  
-  Login page for user authentication.
-- `/signup`  
-  Signup page for new user registration.
+  Landing page with project overview and authentication options
+- `/auth/login`  
+  Login page with email/password authentication
+- `/auth/register`  
+  Registration page for new users
 - `/dashboard`  
-  The main dashboard page.
+  Main dashboard with widgets and statistics
 
-### **Dashboard Nested Pages**
-#### **Users Management**
-- `/dashboard/users`  
-  List all users with search, filter, and pagination functionality.
-- `/dashboard/users/new`  
-  Create a new user with fields like name, email, role, and password.
-- `/dashboard/users/[id]`  
-  View and edit detailed user information or delete a user.
+### **Resource Pages**
+Each resource (e.g., users, posts, products) follows a consistent structure:
+- `/dashboard/[resource]`  
+  List view with advanced data table
+- `/dashboard/[resource]/new`  
+  Create form with validation
+- `/dashboard/[resource]/[id]`  
+  Edit form with validation and delete option
 
-#### **Posts Management**
-- `/dashboard/posts`  
-  List all posts with options for sorting, filtering, and pagination.
-- `/dashboard/posts/new`  
-  Create a new post with fields like title, content, and tags.
-- `/dashboard/posts/[id]`  
-  View and edit detailed post information or delete a post.
-
-#### **Profile Management**
+### **Profile Management**
 - `/dashboard/profile`  
-  A profile page where users can view and update their personal details, such as name, email, and password.
+  User profile management with settings
 
 ---
 
-## **Authentication with Better Auth**
-- **Library**: The authentication for this project will be handled using **[Better Auth](https://www.better-auth.com/)**.
-- **Key Features**:
-  - Secure and flexible authentication flows for login, signup, and logout.
-  - Built-in session management.
-  - Integration with role-based access control (RBAC) for user permissions.
+## **Resource-based Architecture**
 
-### **Role-Based Access Control (RBAC)**
-Define roles and permissions for secure and controlled access:
-- **Admin**  
-  Full access to all features.
-- **Editor**  
-  Can create and edit posts but cannot manage users.
-- **Viewer**  
-  Read-only access to posts.
-
----
-
-## **Additional Features**
-- **Database**  
-  Use PostgreSQL with Prisma ORM for schema management, migrations, and querying.
-- **Audit Trail**  
-  Implement logging for user actions (e.g., user creation, post updates) to ensure accountability.
-- **API Endpoints**  
-  Build RESTful API routes for managing users and posts under `/api/`.
-
-
-## Folder Structure
+### Resource Structure
 ```
-project/ <-- you can change this if it's better
-│
-├── prisma/                   # Database schema and migrations
-│   └── schema.prisma
-├── app/
-│   ├── pages/                # Next.js page routes
-│   │   ├── api/              # API routes
-│   │   │   ├── auth/         # Better Auth API integration
-│   │   │   ├── users/        # User management API
-│   │   │   └── posts/        # Post management API
-│   │   ├── dashboard/        # Dashboard and nested pages
-│   │   ├── login.tsx         # Login page
-│   │   ├── signup.tsx        # Signup page
-│   │   └── index.tsx         # Main page
-│   ├── components/           # Reusable components
-│   ├── lib/                  # Utility functions and helpers
-│   └── styles/               # Custom styles
-├── .env                      # Environment variables
-├── package.json              # Dependencies and scripts
-└── README.md                 # Project overview and usage instructions
+src/resources/[resource]/
+├── schema.ts     # Zod schema and types
+├── actions.ts    # Server actions for CRUD
+├── components.ts # Resource-specific components
+├── routes.ts     # Route configuration
+└── index.ts      # Resource configuration
+```
 
+### Resource Configuration
+```typescript
+// src/resources/products/index.ts
+export const productResource = {
+  name: 'Product',
+  route: 'products',
+  schema: productSchema,
+  components: {
+    list: ProductList,
+    form: ProductForm,
+  },
+  actions: {
+    list,
+    create,
+    update,
+    remove,
+  },
+}
+```
 
-README.md
-A README.md file should include:
+---
 
-Project Description
-A brief overview of the application and its purpose.
+## **Authentication with NextAuth.js**
+- **Session Strategy**: JWT with role-based access
+- **Roles**:
+  - `ADMIN`: Full access to all resources
+  - `EDITOR`: Create and edit own resources
+  - `VIEWER`: Read-only access
 
-Setup Instructions
-Detailed steps to set up and run the project.
+### Role-Based Access Control
+```typescript
+// Example of role-based middleware
+export const withRoles = (roles: Role[]) => {
+  return async (req: NextRequest) => {
+    const session = await getServerSession()
+    if (!session || !roles.includes(session.user.role)) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+    return NextResponse.next()
+  }
+}
+```
 
-Features
-A description of the app's main features, including:
+---
 
-Authentication with Better Auth
-CRUD for users and posts
-RBAC with Admin, Editor, and Viewer roles.
-Technology Stack
-A list of libraries and frameworks used, such as:
+## **Server Actions**
 
-Next.js
-Better Auth
-ShadCN UI
-Prisma
-PostgreSQL
+### CRUD Operations
+```typescript
+// src/resources/products/actions.ts
+export async function create(data: ProductCreateInput) {
+  const session = await getServerSession()
+  if (!session) throw new Error('Unauthorized')
+
+  return prisma.product.create({
+    data: {
+      ...data,
+      userId: session.user.id,
+    },
+  })
+}
+```
+
+### Validation
+```typescript
+// src/resources/products/schema.ts
+export const productSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().min(0),
+  status: z.enum(['draft', 'published']),
+})
+```
+
+---
+
+## **CLI Tools**
+
+### Standard Model Creation
+```bash
+pnpm create-model --name="Product" --fields="
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().min(0),
+  status: z.enum(['draft', 'published'])
+"
+```
+
+### Interactive Model Creation
+```bash
+pnpm create-model-speed
+```
+This tool provides an interactive experience for:
+- Defining model fields
+- Setting up relations
+- Configuring validations
+- Creating dashboard pages
+- Updating database schema
+
+### Create Page
+```bash
+pnpm create-page --name="Products" --route="products" --title="Products" --description="Manage your products"
+```
+
+### Push Model
+```bash
+pnpm push-model
+```
+Safely push selected models to your database.
+
+### Create User
+```bash
+pnpm create-user --name="Admin" --email="admin@example.com" --password="password" --role="ADMIN"
+```
+
+---
+
+## **Project Setup**
+
+### 1. Environment
+```env
+DATABASE_URL="postgresql://user:pass@localhost:5432/db"
+NEXTAUTH_SECRET="your-secret"
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+### 2. Database
+```bash
+pnpm prisma generate
+pnpm prisma db push
+```
+
+### 3. Development
+```bash
+pnpm dev
+```
+
+---
+
+## **Best Practices**
+
+### Resource Creation
+1. Define schema with Zod
+2. Create server actions
+3. Implement components
+4. Configure resource
+5. Add to navigation
+
+### Type Safety
+- Use Zod for validation
+- Leverage TypeScript
+- Implement proper error handling
+
+### Performance
+- Use server components
+- Implement caching
+- Optimize data fetching
+
+### Security
+- Validate all inputs
+- Implement RBAC
+- Use server actions
+- Protect sensitive routes
+
+---
+
+## **Development Workflow**
+
+### 1. Create Resource
+```bash
+pnpm model:create
+```
+
+### 2. Customize Components
+- Modify list view
+- Adjust form fields
+- Add custom actions
+
+### 3. Add to Navigation
+```typescript
+// src/config/navigation.ts
+export const navigation = [
+  {
+    title: 'Products',
+    href: '/dashboard/products',
+    icon: Package,
+  },
+]
+```
+
+### 4. Test & Deploy
+- Verify CRUD operations
+- Check permissions
+- Test responsive design
+- Deploy changes

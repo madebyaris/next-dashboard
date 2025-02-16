@@ -1,156 +1,188 @@
 # Next.js Dashboard
 
-A modern dashboard application built with Next.js 15+, featuring user authentication, post management, and real-time statistics.
+A modern, type-safe dashboard application built with Next.js 15+, featuring:
+- 🔐 Role-based authentication with NextAuth.js
+- 📊 Dynamic dashboard widgets with real-time data
+- 📝 Server-side CRUD operations with Zod validation
+- 🎨 Beautiful UI with Shadcn/ui and Tailwind
+- 🛠️ Resource-based architecture with builder pattern
+- 🚀 CLI tools for rapid development
 
-This is build by AI with ❤️, thanks to Windsurf.
+## Documentation
+- [Instruction](instruction.md) About how this project is built and what you can expect from this project.
+- [HOW TO USE](docs/INSTRUCTION.md) About how to use this project for the first time.
+- [GUIDE](docs/GUIDE.md) If you are Developer, you can use this guide to understand the code and how to extend this project.
 
-To learn how to use this project, refer to the [Getting Started](#getting-started) section below.
+## Donation
+If you like this project, you can buy me a coffee:
+<div align="center">
+  <a href="https://paypal.me/airs">
+    <img src="https://img.shields.io/badge/PayPal-Donate-blue?style=for-the-badge&logo=paypal" alt="Donate with PayPal" />
+  </a>
+  <a href="https://trakteer.id/madebyaris/tip">
+    <img src="https://img.shields.io/badge/Trakteer-Support-red?style=for-the-badge&logo=ko-fi" alt="Support on Trakteer" />
+  </a>
+</div>
 
-And you can start using our docs guide:
-[docs/GUIDE.md](docs/GUIDE.md).
 
 ## Features
 
-- 🔐 **Authentication**
-  - Email/Password authentication
-  - Protected routes and API endpoints
-  - Session management with NextAuth.js
-  - Role-based access control (ADMIN, EDITOR, VIEWER)
+### Authentication & Authorization
+- Email/password authentication with NextAuth.js
+- Role-based access control (Admin, Editor, Viewer)
+- Protected routes and API endpoints
+- Session management with JWT
+- Resource-level permissions
 
-- 📊 **Dashboard Overview**
-  - Real-time statistics display
-  - Recent users and posts overview
-  - Interactive data cards
-  - Role-based dashboard views
+### Dashboard
+- Real-time statistics with server actions
+- Customizable widgets with builder pattern
+- Interactive data tables with sorting and filtering
+- Activity feeds and audit trails
+- Responsive layout with mobile support
 
-- 📝 **Post Management**
-  - Create, read, update, and delete posts
-  - Draft/Publish status
-  - Rich text content
-  - Author tracking
-  - Role-based permissions
+### Data Management
+- Server-side CRUD operations
+- Form validation with Zod
+- Advanced data tables with:
+  - Sorting and filtering
+  - Pagination
+  - Bulk actions
+  - Search functionality
+- Resource-based architecture
+- Type-safe API endpoints
 
-- 👥 **User Management**
-  - User registration and login
-  - Profile management
-  - Activity tracking
-  - CLI tools for user creation
-  - Role-based permissions
+### Developer Experience
+- TypeScript for type safety
+- Resource-based architecture
+- CLI tools for scaffolding:
+  - Model creation with database schema
+  - Dashboard page generation
+  - Resource configuration
+- Comprehensive documentation
+- Hot module reloading
 
-## Tech Stack
+## Quick Start
 
-- **Framework**: Next.js 13+ (App Router)
-- **Authentication**: NextAuth.js
-- **Database**: PostgreSQL with Prisma ORM
-- **Styling**: Tailwind CSS
-- **UI Components**: shadcn/ui
-- **Form Handling**: React Hook Form + Zod
-- **State Management**: React Context + Hooks
-- **CLI Tools**: Node.js scripts with TypeScript
+### Prerequisites
+- Node.js 18+
+- PostgreSQL
+- pnpm
 
-## Getting Started
+### Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/madebyaris/next-dashboard.git
-   cd next-dashboard
-   ```
+```bash
+git clone https://github.com/yourusername/next-dashboard.git
+cd next-dashboard
+```
 
 2. Install dependencies:
-   ```bash
-   pnpm install
-   ```
+```bash
+pnpm install
+```
 
 3. Set up environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-   Fill in your environment variables in `.env`
+```bash
+cp .env.example .env
+```
 
-4. Set up the database:
-   ```bash
-   pnpm prisma db push
-   ```
+4. Update `.env` with your configuration:
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/next_dashboard"
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
+```
 
-5. Create an admin user:
-   ```bash
-   pnpm create-user --name="Admin User" --email="admin@example.com" --password="admin123" --role="ADMIN"
-   ```
+5. Initialize the database:
+```bash
+pnpm prisma db push
+```
 
-6. Run the development server:
-   ```bash
-   pnpm dev
-   ```
+6. Start the development server:
+```bash
+pnpm dev
+```
 
-7. Open [http://localhost:3000](http://localhost:3000) in your browser.
+Visit [http://localhost:3000](http://localhost:3000) to see your dashboard.
 
 ## CLI Tools
 
-### User Management
-
-Create users directly from the terminal:
-
+### Create Model (Standard)
 ```bash
-pnpm create-user --name="User Name" --email="user@example.com" --password="password" --role="ROLE"
+pnpm create-model --name="Product" --fields="
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().min(0),
+  stock: z.number().min(0),
+  status: z.enum(['draft', 'published'])
+"
 ```
 
-Available roles:
-- ADMIN: Full access to all features
-- EDITOR: Can manage posts and view users
-- VIEWER: Can view published content only
+### Create Model (Interactive)
+```bash
+pnpm create-model-speed
+```
+This interactive CLI tool will guide you through:
+- Model name and fields
+- Field types and validations
+- Relations and constraints
+- Dashboard page creation
+- Database schema updates
 
-For more details about CLI tools, check the [CLI Tools Guide](docs/GUIDE.md#cli-tools).
+### Create Page
+```bash
+pnpm create-page --name="feature" --route="feature" --title="Feature Management" --description="Manage your features"
+```
 
-## Environment Variables
+### Push Model to Database
+```bash
+pnpm push-model
+```
+Selectively push models to your database without data loss.
 
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/your_database_name"
-
-# NextAuth
-NEXTAUTH_SECRET="your-secret-key"
-NEXTAUTH_URL="http://localhost:3000"
-
-# Environment
-NODE_ENV="development"
+### Create User
+```bash
+pnpm create-user --name="User Name" --email="user@example.com" --password="password" --role="ROLE"
 ```
 
 ## Project Structure
 
 ```
 src/
-├── app/                 # App router pages
+├── app/                 # Next.js app router pages
 ├── components/          # React components
 │   ├── dashboard/      # Dashboard-specific components
-│   ├── posts/          # Post management components
-│   └── ui/             # Reusable UI components
-├── lib/                # Utility functions and configurations
-├── scripts/           # CLI tools and scripts
-├── styles/            # Global styles
-└── types/             # TypeScript type definitions
+│   ├── ui/             # Base UI components
+│   └── widgets/        # Dashboard widgets
+├── lib/                # Utility functions
+├── builders/           # Builder pattern implementations
+└── resources/          # Resource configurations
+    └── [resource]/     # Resource-specific files
+        ├── schema.ts   # Zod schema
+        ├── actions.ts  # Server actions
+        ├── routes.ts   # Route config
+        └── index.ts    # Resource config
 ```
 
-## Role-Based Access
+## Available Scripts
 
-The application implements role-based access control:
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm start` - Start production server
+- `pnpm lint` - Run ESLint
+- `pnpm create-model` - Interactive model creation
+- `pnpm create-model-speed` - Quick model creation
+- `pnpm create-page` - Generate a new page
+- `pnpm push-model` - Push models to database
 
-- **ADMIN**
-  - Full access to all features
-  - Can manage users and roles
-  - Can manage all posts
-  - Access to system settings
+## Documentation
 
-- **EDITOR**
-  - Can create and edit posts
-  - Can view user profiles
-  - Cannot manage users or roles
-  - Limited system settings access
-
-- **VIEWER**
-  - Can view published posts
-  - Can view own profile
-  - No management capabilities
-  - No settings access
+- [Getting Started](docs/GUIDE.md#getting-started)
+- [Architecture](docs/GUIDE.md#architecture)
+- [Authentication](docs/GUIDE.md#authentication)
+- [Components](docs/GUIDE.md#components)
+- [API](docs/GUIDE.md#api)
+- [Best Practices](docs/GUIDE.md#best-practices)
 
 ## Contributing
 
@@ -163,3 +195,16 @@ The application implements role-based access control:
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [Next.js](https://nextjs.org/)
+- [NextAuth.js](https://next-auth.js.org/)
+- [Prisma](https://www.prisma.io/)
+- [ShadcnUI](https://ui.shadcn.com/)
+- [TailwindCSS](https://tailwindcss.com/)
+- [Zod](https://zod.dev/)
+
+## Support
+
+If you find this project helpful, please give it a ⭐️ on GitHub!

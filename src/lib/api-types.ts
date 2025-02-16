@@ -22,9 +22,12 @@ export interface UserResponse extends ApiResponse {
 }
 
 // Post types
-export interface PostWithAuthor extends Prisma.PostGetPayload<{
-  include: { author: true }
-}> {
+export type PostWithAuthor = Omit<
+  Prisma.PostGetPayload<{
+    include: { author: true }
+  }>,
+  'author'
+> & {
   author: SafeUser
 }
 

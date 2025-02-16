@@ -1,35 +1,47 @@
-import { notFound } from 'next/navigation'
-import { DashboardHeader } from '@/components/dashboard/header'
-import { PostForm } from '@/components/posts/post-form'
-import { getPostById } from '@/lib/api'
+import { posts } from '@/resources/posts'
+import { PostForm } from '@/resources/posts/components'
+import { DashboardShell } from '@/components/dashboard/shell'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
-interface EditPostPageProps {
-  params: {
-    postId: string
+type PageParams = Promise<{ postId: string }>
+
+export default async function EditPostPage({ params }: { params: PageParams }) {
+  const { postId } = await params
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user) {
+    redirect('/auth/signin')
   }
-}
 
-export const metadata = {
-  title: 'Edit Post',
-  description: 'Edit your blog post',
-}
+  const post = await posts.actions.getById(postId)
 
-export default async function EditPostPage({ params }: EditPostPageProps) {
-  const post = await getPostById(params.postId)
+  async function handleSubmit(formData: FormData) {
+    'use server'
+    
+    if (!session?.user) {
+      throw new Error('Not authenticated')
+    }
+    
+    const data = {
+      title: formData.get('title') as string,
+      content: formData.get('content') as string,
+      published: formData.get('published') === 'true',
+    }
 
-  if (!post) {
-    notFound()
+    await posts.actions.update(postId, data)
   }
 
   return (
-    <div className="space-y-6">
-      <DashboardHeader
-        heading="Edit Post"
-        text="Make changes to your post."
+    <DashboardShell
+      title="Edit Post"
+      description="Edit your blog post"
+    >
+      <PostForm 
+        defaultValues={post} 
+        onSubmit={handleSubmit}
       />
-      <div className="grid gap-6">
-        <PostForm initialData={post} />
-      </div>
-    </div>
+    </DashboardShell>
   )
-}
+} 
