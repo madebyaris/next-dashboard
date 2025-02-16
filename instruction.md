@@ -122,26 +122,41 @@ export const productSchema = z.object({
 
 ## **CLI Tools**
 
+### Standard Model Creation
+```bash
+pnpm create-model --name="Product" --fields="
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().min(0),
+  status: z.enum(['draft', 'published'])
+"
+```
+
 ### Interactive Model Creation
 ```bash
-pnpm model:create
+pnpm create-model-speed
 ```
-Guides you through creating:
-- Model schema
-- Database fields
-- Relations
-- Dashboard pages
+This tool provides an interactive experience for:
+- Defining model fields
+- Setting up relations
+- Configuring validations
+- Creating dashboard pages
+- Updating database schema
 
-### Quick Model Creation
+### Create Page
 ```bash
-pnpm model:quick --name=Product --fields="name:string,price:number"
+pnpm create-page --name="Products" --route="products" --title="Products" --description="Manage your products"
 ```
 
-### Database Updates
+### Push Model
 ```bash
-pnpm model:push
+pnpm push-model
 ```
-Selectively push models to database
+Safely push selected models to your database.
+
+### Create User
+```bash
+pnpm create-user --name="Admin" --email="admin@example.com" --password="password" --role="ADMIN"
+```
 
 ---
 

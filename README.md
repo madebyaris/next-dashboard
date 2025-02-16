@@ -108,9 +108,19 @@ Visit [http://localhost:3000](http://localhost:3000) to see your dashboard.
 
 ## CLI Tools
 
+### Create Model (Standard)
+```bash
+pnpm create-model --name="Product" --fields="
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().min(0),
+  stock: z.number().min(0),
+  status: z.enum(['draft', 'published'])
+"
+```
+
 ### Create Model (Interactive)
 ```bash
-pnpm model:create
+pnpm create-model-speed
 ```
 This interactive CLI tool will guide you through:
 - Model name and fields
@@ -119,26 +129,21 @@ This interactive CLI tool will guide you through:
 - Dashboard page creation
 - Database schema updates
 
-### Create Model (Quick)
-```bash
-pnpm model:quick --name="Product" --fields="
-  name: z.string().min(1, 'Name is required'),
-  price: z.number().min(0),
-  stock: z.number().min(0),
-  status: z.enum(['draft', 'published'])
-"
-```
-
 ### Create Page
 ```bash
-pnpm page:create --name="feature" --route="feature" --title="Feature Management"
+pnpm create-page --name="feature" --route="feature" --title="Feature Management" --description="Manage your features"
 ```
 
 ### Push Model to Database
 ```bash
-pnpm model:push
+pnpm push-model
 ```
 Selectively push models to your database without data loss.
+
+### Create User
+```bash
+pnpm create-user --name="User Name" --email="user@example.com" --password="password" --role="ROLE"
+```
 
 ## Project Structure
 
@@ -165,10 +170,10 @@ src/
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
 - `pnpm lint` - Run ESLint
-- `pnpm model:create` - Interactive model creation
-- `pnpm model:quick` - Quick model creation
-- `pnpm page:create` - Generate a new page
-- `pnpm model:push` - Push models to database
+- `pnpm create-model` - Interactive model creation
+- `pnpm create-model-speed` - Quick model creation
+- `pnpm create-page` - Generate a new page
+- `pnpm push-model` - Push models to database
 
 ## Documentation
 

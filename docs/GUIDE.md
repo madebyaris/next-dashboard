@@ -67,29 +67,56 @@ export type Product = z.infer<typeof productSchema>
 
 ### CLI Tools
 
-1. Create Model (Interactive)
+1. Create Model (Standard)
 ```bash
-pnpm model:create
+pnpm create-model --name="Product" --fields="
+  name: z.string().min(1, 'Name is required'),
+  price: z.number().min(0),
+  status: z.enum(['draft', 'published'])
+"
 ```
-- Guides through model creation
-- Generates all necessary files
-- Updates database schema
+- Creates resource files
+- Generates Zod schema
+- Sets up CRUD actions
 
-2. Quick Model Creation
+2. Create Model (Interactive)
 ```bash
-pnpm model:quick --name=Product --fields="name:string,price:number"
+pnpm create-model-speed
 ```
-- Fast creation for simple models
-- Supports all Zod types
-- Auto-generates validation
+Interactive CLI that guides you through:
+- Model name and fields
+- Field types and validations
+- Relations and constraints
+- Dashboard page creation
+- Database schema updates
 
-3. Push Model to Database
+3. Create Page
 ```bash
-pnpm model:push
+pnpm create-page --name="Products" --route="products" --title="Products" --description="Manage your products"
 ```
-- Selective model pushing
+Generates:
+- List page with data table
+- Create page with form
+- Edit page with form
+- Loading and error states
+
+4. Push Model
+```bash
+pnpm push-model
+```
+Features:
+- Select models to push
 - Safe schema updates
 - Preserves existing data
+- Automatic Prisma client update
+
+5. Create User
+```bash
+pnpm create-user --name="Admin" --email="admin@example.com" --password="password" --role="ADMIN"
+```
+- Creates new user
+- Sets up role and permissions
+- Hashes password securely
 
 ### Code Generation
 
@@ -97,7 +124,7 @@ Our CLI tools generate:
 1. Prisma schema
 2. Zod validation
 3. TypeScript types
-4. CRUD actions
+4. Server actions
 5. React components
 6. Route configuration
 
