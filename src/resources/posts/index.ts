@@ -1,52 +1,68 @@
-import { FileText, PlusCircle, Archive, Trash2 } from 'lucide-react'
+import { FileText, PlusCircle, Pencil, Trash2 } from 'lucide-react'
 import { postSchema, type Post } from './schema'
 import { routes } from './routes'
 import * as postActions from './actions'
-import type { StatsWidgetProps } from '@/components/widgets'
 import { defineResource } from '../config'
-import { columns } from '@/builders/table'
+import { type Column } from '@/builders/table'
 
 const { delete_, ...actions } = postActions
 
-// Widget configuration
-export const widgets: StatsWidgetProps[] = [
+const columns: Column<Post>[] = [
   {
-    value: 1234,
-    label: 'Total Posts',
-    icon: FileText,
-    trend: {
-      value: 12.5,
-      direction: 'up' as const,
-      label: 'vs last month',
-    },
-    width: 'full',
+    key: 'title',
+    label: 'Title',
+    type: 'text',
+    sortable: true,
+    searchable: true,
   },
   {
-    value: 567,
-    label: 'Published Posts',
-    icon: FileText,
-    trend: {
-      value: 8.2,
-      direction: 'up' as const,
-      label: 'vs last month',
-    },
-    width: 'full',
+    key: 'author',
+    label: 'Author',
+    type: 'text',
+    sortable: true,
+    filterable: true,
+    format: (value) => value?.name || 'Unknown',
   },
   {
-    value: 123,
-    label: 'Draft Posts',
-    icon: FileText,
-    trend: {
-      value: -2.4,
-      direction: 'down' as const,
-      label: 'vs last month',
+    key: 'published',
+    label: 'Status',
+    type: 'badge',
+    valueLabel: {
+      true: 'Published',
+      false: 'Draft',
     },
-    width: 'full',
+    color: {
+      true: 'success',
+      false: 'default',
+    },
+  },
+  {
+    key: 'actions',
+    label: 'Actions',
+    type: 'actions',
+    actions: [
+      {
+        icon: Pencil,
+        label: 'Edit',
+        onClick: (row: Post) => {
+          window.location.href = `/dashboard/posts/${row.id}`
+        },
+      },
+      {
+        icon: Trash2,
+        label: 'Delete',
+        onClick: (row: Post) => {
+          if (confirm('Are you sure you want to delete this post?')) {
+            delete_(row.id)
+            window.location.reload()
+          }
+        },
+      },
+    ],
   },
 ]
 
-// Resource configuration
-export const posts = defineResource<Post>({
+export const config = defineResource<Post>({
   name: 'posts',
   path: routes.list,
   navigation: {
@@ -56,63 +72,52 @@ export const posts = defineResource<Post>({
     roles: ['ADMIN', 'EDITOR'],
   },
   schema: postSchema,
-  table: {
-    columns: [
-      columns.text('title', 'Title', { sortable: true, searchable: true }),
-      columns.text('authorId', 'Author', { sortable: true, filterable: true }),
-      columns.badge('published', 'Status', {
-        color: {
-          true: 'green',
-          false: 'gray',
-        },
-        valueLabel: {
-          true: 'Published',
-          false: 'Draft',
-        },
-      }),
-      columns.actions('id', [
-        {
-          icon: PlusCircle,
-          label: 'Edit',
-          onClick: (row: Post) => actions.edit(row.id),
-        },
-        {
-          icon: Archive,
-          label: 'Archive',
-          onClick: (row: Post) => actions.archive(row.id),
-          visible: (row: Post) => row.published,
-        },
-        {
-          icon: Trash2,
-          label: 'Delete',
-          onClick: (row: Post) => delete_(row.id),
-        },
-      ]),
-    ],
-    filters: [
+  list: {
+    columns,
+    actions: {
+      create: {
+        icon: PlusCircle,
+        label: 'New Post',
+        href: '/dashboard/posts/new',
+      },
+    },
+  },
+  form: {
+    sections: [
       {
-        key: 'published',
-        label: 'Status',
-        type: 'select',
-        options: [
-          { label: 'All', value: '' },
-          { label: 'Published', value: 'true' },
-          { label: 'Draft', value: 'false' },
+        title: 'Basic Information',
+        description: 'Enter the basic information for this post',
+        fields: [
+          {
+            name: 'title',
+            type: 'text',
+            label: 'Title',
+            placeholder: 'Enter post title',
+            required: true,
+          },
+          {
+            name: 'content',
+            type: 'editor',
+            label: 'Content',
+            placeholder: 'Write your post content here',
+            required: true,
+          },
+          {
+            name: 'published',
+            type: 'switch',
+            label: 'Published',
+          },
         ],
       },
     ],
-    defaultSort: {
-      field: 'createdAt',
-      direction: 'desc',
-    },
   },
-  widgets,
   actions: {
     ...actions,
     delete: delete_,
   },
 })
 
+export const posts = config
+
 export { postSchema, type Post } from './schema'
-export { routes } from './routes'
-export { postActions as actions } 
+export { routes } from './routes' 

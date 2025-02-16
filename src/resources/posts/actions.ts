@@ -114,14 +114,15 @@ export async function archive(id: string) {
 }
 
 export async function getStats() {
-  const [total, published] = await Promise.all([
+  const [total, published, draft] = await Promise.all([
     prisma.post.count(),
     prisma.post.count({ where: { published: true } }),
+    prisma.post.count({ where: { published: false } }),
   ])
 
   return {
-    totalPosts: total,
-    publishedPosts: published,
-    draftPosts: total - published,
+    total,
+    published,
+    draft,
   }
 } 

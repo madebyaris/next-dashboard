@@ -1,10 +1,6 @@
-import { DashboardShell } from '@/components/dashboard/shell'
 import { posts } from '@/resources/posts'
 import { PostForm } from '@/resources/posts/components'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-import type { Post } from '@/resources/posts'
+import { DashboardShell } from '@/components/dashboard/shell'
 
 interface EditPostPageProps {
   params: {
@@ -13,24 +9,18 @@ interface EditPostPageProps {
 }
 
 export default async function EditPostPage({ params }: EditPostPageProps) {
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    redirect('/login')
-  }
-
   const post = await posts.actions.getById(params.postId)
 
-  async function onSubmit(data: Omit<Post, 'id' | 'createdAt' | 'updatedAt' | 'author'>) {
+  async function handleSubmit(formData: FormData) {
     'use server'
     
-    if (!session?.user?.id) {
-      throw new Error('Not authenticated')
+    const data = {
+      title: formData.get('title'),
+      content: formData.get('content'),
+      published: formData.get('published') === 'true',
     }
 
-    await posts.actions.update(params.postId, {
-      ...data,
-      authorId: session.user.id,
-    })
+    await posts.actions.update(params.postId, data)
   }
 
   return (
@@ -38,9 +28,10 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
       title="Edit Post"
       description="Edit your blog post"
     >
-      <div className="grid gap-8">
-        <PostForm initialData={post} onSubmit={onSubmit} />
-      </div>
+      <PostForm 
+        defaultValues={post} 
+        onSubmit={handleSubmit}
+      />
     </DashboardShell>
   )
 }
