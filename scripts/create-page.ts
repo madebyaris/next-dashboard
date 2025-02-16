@@ -10,12 +10,12 @@ const pageSchema = z.object({
 })
 
 const templates = {
-  page: (name: string, title: string, description: string = '') => `import { Suspense } from 'react'
-import { PageHeader } from '@/components/dashboard/page-header'
-import { EmptyState } from '@/components/dashboard/empty-state'
-import { DashboardLoading } from '@/components/dashboard/loading'
+  page: (name: string, title: string, description: string = '') => `import { DashboardShell } from '@/components/dashboard/shell'
+import { DataTable } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
 import { PlusCircle } from 'lucide-react'
+import Link from 'next/link'
+import { ${name.toLowerCase()} } from '@/resources/${name.toLowerCase()}'
 
 export const metadata = {
   title: '${title}',
@@ -23,26 +23,122 @@ export const metadata = {
 }
 
 export default async function ${name}Page() {
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        heading="${title}"
-        text="${description}"
-      >
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add New
-        </Button>
-      </PageHeader>
+  const data = await ${name.toLowerCase()}.actions.list()
 
-      <Suspense fallback={<DashboardLoading />}>
-        <EmptyState
-          title="No items found"
-          description="Get started by creating a new item."
-          icon={PlusCircle}
-        />
-      </Suspense>
-    </div>
+  return (
+    <DashboardShell
+      title="${title}"
+      description="${description}"
+      actions={
+        <Button asChild>
+          <Link href="/dashboard/${name.toLowerCase()}/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add New
+          </Link>
+        </Button>
+      }
+    >
+      <${name}List data={data} />
+    </DashboardShell>
+  )
+}
+
+function ${name}List({ data }: { data: any[] }) {
+  return (
+    <DataTable
+      columns={${name.toLowerCase()}.list.columns}
+      data={data}
+      searchKey="title"
+      pageSize={10}
+    />
+  )
+}`,
+
+  newPage: (name: string, title: string) => `import { DashboardShell } from '@/components/dashboard/shell'
+import { ${name}Form } from '@/resources/${name.toLowerCase()}/components'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import { ${name.toLowerCase()} } from '@/resources/${name.toLowerCase()}'
+
+export default async function New${name}Page() {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user) {
+    redirect('/auth/signin')
+  }
+
+  async function handleSubmit(formData: FormData) {
+    'use server'
+    
+    if (!session?.user) {
+      throw new Error('Not authenticated')
+    }
+    
+    const data = {
+      title: formData.get('title') as string,
+      content: formData.get('content') as string,
+      published: formData.get('published') === 'true',
+    }
+
+    await ${name.toLowerCase()}.actions.create(data)
+  }
+
+  return (
+    <DashboardShell
+      title="Create ${title}"
+      description="Create a new ${title.toLowerCase()}"
+    >
+      <${name}Form onSubmit={handleSubmit} />
+    </DashboardShell>
+  )
+}`,
+
+  detailPage: (name: string, title: string) => `import { DashboardShell } from '@/components/dashboard/shell'
+import { ${name}Form } from '@/resources/${name.toLowerCase()}/components'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import { ${name.toLowerCase()} } from '@/resources/${name.toLowerCase()}'
+
+type PageParams = Promise<{ ${name.toLowerCase()}Id: string }>
+
+export default async function Edit${name}Page({ params }: { params: PageParams }) {
+  const { ${name.toLowerCase()}Id } = await params
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user) {
+    redirect('/auth/signin')
+  }
+
+  const item = await ${name.toLowerCase()}.actions.getById(${name.toLowerCase()}Id)
+
+  async function handleSubmit(formData: FormData) {
+    'use server'
+    
+    if (!session?.user) {
+      throw new Error('Not authenticated')
+    }
+    
+    const data = {
+      title: formData.get('title') as string,
+      content: formData.get('content') as string,
+      published: formData.get('published') === 'true',
+    }
+
+    await ${name.toLowerCase()}.actions.update(${name.toLowerCase()}Id, data)
+  }
+
+  return (
+    <DashboardShell
+      title="Edit ${title}"
+      description="Edit your ${title.toLowerCase()}"
+    >
+      <${name}Form 
+        defaultValues={item} 
+        onSubmit={handleSubmit}
+      />
+    </DashboardShell>
   )
 }`,
 
@@ -113,6 +209,22 @@ function createPage() {
       templates.page(pageName, title, description)
     )
 
+    // Create new page
+    const newDir = path.join(pageDir, 'new')
+    createDirectoryIfNotExists(newDir)
+    fs.writeFileSync(
+      path.join(newDir, 'page.tsx'),
+      templates.newPage(pageName, title)
+    )
+
+    // Create detail page
+    const detailDir = path.join(pageDir, `[${name.toLowerCase()}Id]`)
+    createDirectoryIfNotExists(detailDir)
+    fs.writeFileSync(
+      path.join(detailDir, 'page.tsx'),
+      templates.detailPage(pageName, title)
+    )
+
     // Create loading.tsx
     fs.writeFileSync(
       path.join(pageDir, 'loading.tsx'),
@@ -129,6 +241,8 @@ function createPage() {
     console.log(`Route: /dashboard/${route}`)
     console.log(`Files created:`)
     console.log(`- page.tsx`)
+    console.log(`- new/page.tsx`)
+    console.log(`- [${name.toLowerCase()}Id]/page.tsx`)
     console.log(`- loading.tsx`)
     console.log(`- error.tsx`)
   } catch (error) {

@@ -8,53 +8,30 @@ const modelSchema = z.object({
 })
 
 const templates = {
-  types: (name: string, fields: string) => `import { z } from 'zod'
+  schema: (name: string, fields: string) => `import { z } from 'zod'
 
 export const ${name}Schema = z.object({
   ${fields}
 })
 
-export type ${name} = z.infer<typeof ${name}Schema>
-`,
+export type ${name} = z.infer<typeof ${name}Schema>`,
 
-  model: (name: string, fields: string) => `import { prisma } from '@/lib/prisma'
-import { ${name}Schema, type ${name} } from './types'
+  actions: (name: string) => `import { prisma } from '@/lib/prisma'
+import { ${name}Schema, type ${name} } from './schema'
 
-export async function getAll${name}s(options: {
-  page?: number
-  limit?: number
-  where?: any
-  orderBy?: any
-} = {}) {
-  const { page = 1, limit = 10, where = {}, orderBy = { createdAt: 'desc' } } = options
-
-  const skip = (page - 1) * limit
-
-  const [total, items] = await Promise.all([
-    prisma.${name.toLowerCase()}.count({ where }),
-    prisma.${name.toLowerCase()}.findMany({
-      where,
-      orderBy,
-      skip,
-      take: limit,
-    }),
-  ])
-
-  return {
-    items,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  }
+export async function list() {
+  return await prisma.${name.toLowerCase()}.findMany({
+    orderBy: { createdAt: 'desc' },
+  })
 }
 
-export async function get${name}ById(id: string) {
+export async function getById(id: string) {
   return await prisma.${name.toLowerCase()}.findUnique({
     where: { id },
   })
 }
 
-export async function create${name}(data: Omit<${name}, 'id' | 'createdAt' | 'updatedAt'>) {
+export async function create(data: Omit<${name}, 'id' | 'createdAt' | 'updatedAt'>) {
   const validated = ${name}Schema.parse(data)
 
   return await prisma.${name.toLowerCase()}.create({
@@ -62,7 +39,7 @@ export async function create${name}(data: Omit<${name}, 'id' | 'createdAt' | 'up
   })
 }
 
-export async function update${name}(id: string, data: Partial<${name}>) {
+export async function update(id: string, data: Partial<${name}>) {
   const validated = ${name}Schema.partial().parse(data)
 
   return await prisma.${name.toLowerCase()}.update({
@@ -71,119 +48,187 @@ export async function update${name}(id: string, data: Partial<${name}>) {
   })
 }
 
-export async function delete${name}(id: string) {
+export async function remove(id: string) {
   return await prisma.${name.toLowerCase()}.delete({
     where: { id },
   })
-}
-`,
+}`,
 
-  api: (name: string) => `import { NextRequest } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { 
-  getAll${name}s,
-  get${name}ById,
-  create${name},
-  update${name},
-  delete${name}
-} from '@/models/${name.toLowerCase()}'
-import { ${name}Schema } from '@/models/${name.toLowerCase()}/types'
-import { 
-  successResponse, 
-  errorResponse, 
-  AUTH_ERROR,
-  FORBIDDEN_ERROR,
-  VALIDATION_ERROR,
-  NOT_FOUND_ERROR
-} from '@/lib/api-response'
+  components: (name: string) => `'use client'
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session) return errorResponse(AUTH_ERROR, 401)
+import { type ${name} } from './schema'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
 
-    const { searchParams } = new URL(request.url)
-    const page = Number(searchParams.get('page')) || 1
-    const limit = Number(searchParams.get('limit')) || 10
-
-    const result = await getAll${name}s({ page, limit })
-    return successResponse(result)
-  } catch (error) {
-    console.error('[${name.toUpperCase()}_GET]', error)
-    return errorResponse('Failed to fetch ${name.toLowerCase()}s')
-  }
+interface ${name}FormProps {
+  defaultValues?: Partial<${name}>
+  onSubmit: (data: FormData) => Promise<void>
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session) return errorResponse(AUTH_ERROR, 401)
-    if (!['ADMIN', 'EDITOR'].includes(session.user.role || '')) {
-      return errorResponse(FORBIDDEN_ERROR, 403)
-    }
+export function ${name}Form({ defaultValues, onSubmit }: ${name}FormProps) {
+  const form = useForm({
+    defaultValues,
+  })
 
-    const json = await request.json()
-    const validatedData = ${name}Schema.parse(json)
+  return (
+    <Form {...form}>
+      <form action={onSubmit} className="space-y-8">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Title</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-    const item = await create${name}(validatedData)
-    return successResponse(item, '${name} created successfully')
-  } catch (error) {
-    console.error('[${name.toUpperCase()}_POST]', error)
-    return errorResponse('Failed to create ${name.toLowerCase()}')
-  }
-}
+        <FormField
+          control={form.control}
+          name="content"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Content</FormLabel>
+              <FormControl>
+                <Textarea {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-export async function PUT(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session) return errorResponse(AUTH_ERROR, 401)
-    if (!['ADMIN', 'EDITOR'].includes(session.user.role || '')) {
-      return errorResponse(FORBIDDEN_ERROR, 403)
-    }
+        <FormField
+          control={form.control}
+          name="published"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Published</FormLabel>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-    const json = await request.json()
-    const { id, ...data } = json
+        <Button type="submit">Save</Button>
+      </form>
+    </Form>
+  )
+}`,
 
-    if (!id) return errorResponse('ID is required', 400)
+  routes: (name: string) => `import { type Column } from '@/resources/config'
+import { type ${name} } from './schema'
+import { Edit, Trash } from 'lucide-react'
 
-    const existing = await get${name}ById(id)
-    if (!existing) return errorResponse(NOT_FOUND_ERROR, 404)
+export const columns: Column<${name}>[] = [
+  {
+    key: 'title',
+    label: 'Title',
+    type: 'text',
+    sortable: true,
+    searchable: true,
+  },
+  {
+    key: 'published',
+    label: 'Status',
+    type: 'badge',
+    sortable: true,
+    color: {
+      true: 'success',
+      false: 'secondary',
+    },
+    valueLabel: {
+      true: 'Published',
+      false: 'Draft',
+    },
+  },
+  {
+    key: 'actions',
+    label: '',
+    type: 'actions',
+    actions: [
+      {
+        icon: Edit,
+        label: 'Edit',
+        onClick: (row) => {
+          window.location.href = \`/dashboard/${name.toLowerCase()}/\${row.id}\`
+        },
+      },
+      {
+        icon: Trash,
+        label: 'Delete',
+        onClick: async (row) => {
+          if (!confirm('Are you sure?')) return
+          await fetch(\`/api/${name.toLowerCase()}/\${row.id}\`, {
+            method: 'DELETE',
+          })
+          window.location.reload()
+        },
+      },
+    ],
+  },
+]`,
 
-    const validatedData = ${name}Schema.partial().parse(data)
-    const updated = await update${name}(id, validatedData)
+  index: (name: string) => `import * as actions from './actions'
+import * as components from './components'
+import * as routes from './routes'
+import { ${name}Schema } from './schema'
 
-    return successResponse(updated, '${name} updated successfully')
-  } catch (error) {
-    console.error('[${name.toUpperCase()}_PUT]', error)
-    return errorResponse('Failed to update ${name.toLowerCase()}')
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session) return errorResponse(AUTH_ERROR, 401)
-    if (session.user.role !== 'ADMIN') {
-      return errorResponse(FORBIDDEN_ERROR, 403)
-    }
-
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-
-    if (!id) return errorResponse('ID is required', 400)
-
-    const existing = await get${name}ById(id)
-    if (!existing) return errorResponse(NOT_FOUND_ERROR, 404)
-
-    await delete${name}(id)
-    return successResponse(null, '${name} deleted successfully')
-  } catch (error) {
-    console.error('[${name.toUpperCase()}_DELETE]', error)
-    return errorResponse('Failed to delete ${name.toLowerCase()}')
-  }
-}
-`
+export const ${name.toLowerCase()} = {
+  actions,
+  components,
+  routes,
+  schema: ${name}Schema,
+  list: {
+    columns: routes.columns,
+  },
+  form: {
+    sections: [
+      {
+        title: 'General',
+        fields: [
+          {
+            name: 'title',
+            type: 'text',
+            label: 'Title',
+            placeholder: 'Enter title',
+          },
+          {
+            name: 'content',
+            type: 'editor',
+            label: 'Content',
+            placeholder: 'Enter content',
+          },
+          {
+            name: 'published',
+            type: 'switch',
+            label: 'Published',
+          },
+        ],
+      },
+    ],
+  },
+}`,
 }
 
 function createDirectoryIfNotExists(dirPath: string) {
@@ -209,36 +254,44 @@ function createModel() {
     const validatedData = modelSchema.parse(modelData)
     const { name, fields } = validatedData
 
-    // Create model directory
-    const modelDir = path.join(process.cwd(), 'src', 'models', name.toLowerCase())
-    createDirectoryIfNotExists(modelDir)
+    // Create resource directory
+    const resourceDir = path.join(process.cwd(), 'src', 'resources', name.toLowerCase())
+    createDirectoryIfNotExists(resourceDir)
 
-    // Create model files
+    // Create resource files
     fs.writeFileSync(
-      path.join(modelDir, 'types.ts'),
-      templates.types(name, fields)
+      path.join(resourceDir, 'schema.ts'),
+      templates.schema(name, fields)
     )
 
     fs.writeFileSync(
-      path.join(modelDir, 'index.ts'),
-      templates.model(name, fields)
+      path.join(resourceDir, 'actions.ts'),
+      templates.actions(name)
     )
 
-    // Create API route
-    const apiDir = path.join(process.cwd(), 'src', 'app', 'api', name.toLowerCase())
-    createDirectoryIfNotExists(apiDir)
     fs.writeFileSync(
-      path.join(apiDir, 'route.ts'),
-      templates.api(name)
+      path.join(resourceDir, 'components.tsx'),
+      templates.components(name)
     )
 
-    console.log('Model created successfully:')
-    console.log(`Model files created in src/models/${name.toLowerCase()}/`)
-    console.log(`API route created in src/app/api/${name.toLowerCase()}/route.ts`)
+    fs.writeFileSync(
+      path.join(resourceDir, 'routes.ts'),
+      templates.routes(name)
+    )
+
+    fs.writeFileSync(
+      path.join(resourceDir, 'index.ts'),
+      templates.index(name)
+    )
+
+    console.log('Resource created successfully:')
+    console.log(`Files created in src/resources/${name.toLowerCase()}/`)
     console.log('\nFiles created:')
-    console.log(`- types.ts`)
+    console.log(`- schema.ts`)
+    console.log(`- actions.ts`)
+    console.log(`- components.tsx`)
+    console.log(`- routes.ts`)
     console.log(`- index.ts`)
-    console.log(`- route.ts`)
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('Validation error:', error.errors)

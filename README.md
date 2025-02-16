@@ -1,11 +1,12 @@
 # Next.js Dashboard
 
 A modern, type-safe dashboard application built with Next.js 15+, featuring:
-- 🔐 Role-based authentication
-- 📊 Dynamic dashboard widgets
-- 📝 CRUD operations with validation
-- 🎨 Beautiful UI with Shadcn/ui
-- 🛠️ Builder pattern for flexible components
+- 🔐 Role-based authentication with NextAuth.js
+- 📊 Dynamic dashboard widgets with real-time data
+- 📝 Server-side CRUD operations with Zod validation
+- 🎨 Beautiful UI with Shadcn/ui and Tailwind
+- 🛠️ Resource-based architecture with builder pattern
+- 🚀 CLI tools for rapid development
 
 ## Documentation
 - [Instruction](instruction.md) About how this project is built and what you can expect from this project.
@@ -18,28 +19,36 @@ A modern, type-safe dashboard application built with Next.js 15+, featuring:
 - Email/password authentication with NextAuth.js
 - Role-based access control (Admin, Editor, Viewer)
 - Protected routes and API endpoints
-- Session management
+- Session management with JWT
+- Resource-level permissions
 
 ### Dashboard
-- Real-time statistics
-- Customizable widgets
-- Interactive charts
-- Activity feeds
-- Responsive layout
+- Real-time statistics with server actions
+- Customizable widgets with builder pattern
+- Interactive data tables with sorting and filtering
+- Activity feeds and audit trails
+- Responsive layout with mobile support
 
 ### Data Management
-- CRUD operations for resources
+- Server-side CRUD operations
 - Form validation with Zod
-- Data table with sorting and filtering
-- File uploads
-- Batch operations
+- Advanced data tables with:
+  - Sorting and filtering
+  - Pagination
+  - Bulk actions
+  - Search functionality
+- Resource-based architecture
+- Type-safe API endpoints
 
 ### Developer Experience
 - TypeScript for type safety
-- Builder pattern for component configuration
-- CLI tools for scaffolding
+- Resource-based architecture
+- CLI tools for scaffolding:
+  - Model creation with database schema
+  - Dashboard page generation
+  - Resource configuration
 - Comprehensive documentation
-- Testing setup
+- Hot module reloading
 
 ## Quick Start
 
@@ -78,12 +87,7 @@ NEXTAUTH_URL="http://localhost:3000"
 pnpm prisma db push
 ```
 
-6. Create an admin user:
-```bash
-pnpm create-user --name="Admin User" --email="admin@example.com" --password="admin123" --role="ADMIN"
-```
-
-7. Start the development server:
+6. Start the development server:
 ```bash
 pnpm dev
 ```
@@ -92,25 +96,37 @@ Visit [http://localhost:3000](http://localhost:3000) to see your dashboard.
 
 ## CLI Tools
 
-### Create User
+### Create Model (Interactive)
 ```bash
-pnpm create-user --name="User Name" --email="user@example.com" --password="password" --role="ROLE"
+pnpm model:create
 ```
+This interactive CLI tool will guide you through:
+- Model name and fields
+- Field types and validations
+- Relations and constraints
+- Dashboard page creation
+- Database schema updates
 
-### Create Page
+### Create Model (Quick)
 ```bash
-pnpm create-page --name="feature" --route="feature" --title="Feature Management"
-```
-
-### Create Model
-```bash
-pnpm create-model --name="Product" --fields="
+pnpm model:quick --name="Product" --fields="
   name: z.string().min(1, 'Name is required'),
   price: z.number().min(0),
   stock: z.number().min(0),
   status: z.enum(['draft', 'published'])
 "
 ```
+
+### Create Page
+```bash
+pnpm page:create --name="feature" --route="feature" --title="Feature Management"
+```
+
+### Push Model to Database
+```bash
+pnpm model:push
+```
+Selectively push models to your database without data loss.
 
 ## Project Structure
 
@@ -123,8 +139,12 @@ src/
 │   └── widgets/        # Dashboard widgets
 ├── lib/                # Utility functions
 ├── builders/           # Builder pattern implementations
-├── models/             # Data models and business logic
 └── resources/          # Resource configurations
+    └── [resource]/     # Resource-specific files
+        ├── schema.ts   # Zod schema
+        ├── actions.ts  # Server actions
+        ├── routes.ts   # Route config
+        └── index.ts    # Resource config
 ```
 
 ## Available Scripts
@@ -133,10 +153,10 @@ src/
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
 - `pnpm lint` - Run ESLint
-- `pnpm test` - Run tests
-- `pnpm create-user` - Create a new user
-- `pnpm create-page` - Generate a new page
-- `pnpm create-model` - Create a new model
+- `pnpm model:create` - Interactive model creation
+- `pnpm model:quick` - Quick model creation
+- `pnpm page:create` - Generate a new page
+- `pnpm model:push` - Push models to database
 
 ## Documentation
 
