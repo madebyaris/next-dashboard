@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { type Post, createPostSchema, updatePostSchema } from './schema'
+import { z } from 'zod'
 
 export async function list(options: {
   page?: number
@@ -61,21 +62,28 @@ export async function getById(id: string) {
 }
 
 export async function create(data: Omit<Post, 'id' | 'createdAt' | 'updatedAt' | 'author'>) {
-  const validated = createPostSchema.parse(data)
+  try {
+    const validated = createPostSchema.parse(data)
 
-  const post = await prisma.post.create({
-    data: validated,
-    include: {
-      author: {
-        select: {
-          name: true,
+    const post = await prisma.post.create({
+      data: validated,
+      include: {
+        author: {
+          select: {
+            name: true,
+          },
         },
       },
-    },
-  })
+    })
 
-  revalidatePath(routes.list)
-  redirect(routes.list)
+    revalidatePath(routes.list)
+    redirect(routes.list)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new Error(JSON.stringify(error.errors, null, 2))
+    }
+    throw error
+  }
 }
 
 export async function update(id: string, data: Partial<Post>) {
