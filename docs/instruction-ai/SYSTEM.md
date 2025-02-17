@@ -19,6 +19,8 @@ src/resources/[resource]/
 scripts/
 ├── create-model.ts         # Standard model creation
 ├── create-model-speed.ts   # Interactive model creation
+├── create-model-speed-ai.ts # AI-powered model creation
+├── ai-model-handler.ts     # AI model creation handler
 ├── create-page.ts         # Page generation
 ├── create-user.ts         # User management
 └── push-model.ts         # Database schema updates
@@ -28,41 +30,65 @@ scripts/
 ```bash
 pnpm create-model         # Standard model creation
 pnpm create-model-speed   # Interactive model creation
+pnpm create-model-speed-ai # AI-powered model creation
 pnpm create-page         # Page creation
 pnpm push-model          # Database schema updates
 pnpm create-user         # User creation
 ```
 
-## Script Behavior Rules
+## AI Model Creation
 
-1. create-model-speed.ts:
-   - ALWAYS use for complex models with relations
-   - ALWAYS use for models requiring dashboard pages
-   - Handles Prisma schema updates automatically
-   - Generates all resource files
+1. Direct Model Creation:
+```typescript
+// When user asks to create a model, use handleModelCreation:
+import { handleModelCreation } from '../scripts/ai-model-handler'
 
-2. create-model.ts:
-   - Use for simple, standalone models
-   - Requires manual field specification
-   - Generates basic resource structure
+await handleModelCreation(`
+  name: Product
+  fields:
+    - name: string, required
+    - price: float, required
+    - status: string, required
+`)
+```
 
-3. create-page.ts:
-   - ALWAYS generates all required pages (list, create, edit)
-   - ALWAYS includes loading and error states
-   - Follows dashboard shell pattern
-   - Uses resource configuration
+2. Response Format:
+```typescript
+// Format your responses as an array of strings with newlines:
+const responses = [
+  'ModelName\n',           // Model name
+  'y\n',                   // Create dashboard
+  '2\n',                   // Number of fields
+  'fieldName\n',          // Field name
+  '0\n',                  // Field type (0 = String)
+  'y\n',                  // Required
+  'n\n',                  // Not unique
+  'n\n',                  // No default
+  'n\n',                  // No more fields
+]
+```
 
-4. push-model.ts:
-   - ALWAYS use for safe schema updates
-   - Preserves existing data
-   - Allows selective model pushing
+3. Field Type Mapping:
+```typescript
+const FIELD_TYPES = {
+  'String': 0,
+  'Int': 1,
+  'Float': 2,
+  'Boolean': 3,
+  'DateTime': 4,
+  'Json': 5,
+  'BigInt': 6,
+  'Decimal': 7,
+  'Relation': 8
+}
+```
 
 ## Response Rules
 
 1. When asked about creating new resources:
-   - ALWAYS suggest using CLI tools
-   - NEVER generate complete resource files
-   - Format: Suggest `create-model-speed` for complex resources or `create-model` with fields for simple ones
+   - Use `handleModelCreation` to programmatically create models
+   - Format responses according to the CLI's expected input
+   - Handle field types and validations automatically
 
 2. When asked about modifying existing resources:
    - ONLY modify within existing file structure
@@ -115,100 +141,53 @@ export async function createResource(data: any) {
 }
 ```
 
-3. Components:
+## AI Response Patterns
+
+1. Model Creation:
 ```typescript
-// CORRECT
-export function ResourceForm({ defaultValues, onSubmit }: Props) {
-  const form = useForm({
-    resolver: zodResolver(schema),
-    defaultValues
-  })
-  return (
-    <Form {...form}>
-      <form action={onSubmit}>
-        {/* Form fields */}
-      </form>
-    </Form>
-  )
-}
-
-// INCORRECT - Don't use custom state or handlers
-export function CustomForm() {
-  const [formData, setFormData] = useState({})
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    await fetch('/api/submit', { method: 'POST', body: JSON.stringify(formData) })
-  }
-}
-```
-
-4. Page Components:
-```typescript
-// CORRECT
-export default async function ResourcePage() {
-  const data = await resource.actions.list()
-  return (
-    <DashboardShell
-      title="Resources"
-      description="Manage your resources"
-    >
-      <ResourceList data={data} />
-    </DashboardShell>
-  )
-}
-
-// INCORRECT - Don't fetch in components or use useEffect
-export default function ResourcePage() {
-  const [data, setData] = useState([])
-  useEffect(() => {
-    fetch('/api/resources').then(res => setData(res.json()))
-  }, [])
-}
-```
-
-5. Route Configuration:
-```typescript
-// CORRECT
-export const columns: Column<T>[] = [
-  {
-    key: 'title',
-    label: 'Title',
-    sortable: true,
-    searchable: true,
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    type: 'badge',
-    color: {
-      draft: 'secondary',
-      published: 'success'
-    }
-  },
-  {
-    key: 'actions',
-    type: 'actions',
-    actions: [
-      {
-        label: 'Edit',
-        icon: Edit,
-        onClick: (row) => `/dashboard/resource/${row.id}`
-      }
-    ]
-  }
+// When user asks to create a model:
+const modelResponses = [
+  'ModelName\n',
+  'y\n',  // Create dashboard
+  '2\n',  // Fields count
+  // Field 1
+  'name\n',
+  '0\n',  // String
+  'y\n',  // Required
+  'n\n',  // Not unique
+  'n\n',  // No default
+  // Field 2
+  'status\n',
+  '0\n',  // String
+  'y\n',  // Required
+  'n\n',  // Not unique
+  'n\n',  // No default
+  // End
+  'n\n',  // No more fields
 ]
+```
 
-// INCORRECT - Don't create custom table structures
-export const tableConfig = {
-  columns: [
-    { name: 'title', header: 'Title' },
-    { name: 'status', render: (status) => <Badge>{status}</Badge> }
-  ],
-  actions: {
-    edit: true,
-    delete: true
-  }
-}
+2. Relations:
+```typescript
+// When adding relations:
+const relationResponses = [
+  'Category\n',
+  'products\n',  // Relation field name
+  '0\n',        // CASCADE
+]
+```
+
+3. Validation:
+```typescript
+// When adding validation:
+const fieldWithValidation = [
+  'price\n',
+  '2\n',    // Float
+  'y\n',    // Required
+  'n\n',    // Not unique
+  'y\n',    // Has default
+  '0\n',    // Default value
+]
 ```
 
 ## Framework-Specific Patterns
@@ -237,162 +216,44 @@ export const resource = {
     ]
   }
 }
-
-// INCORRECT - Don't create custom configurations
-export const config = {
-  model: 'resource',
-  fields: ['title', 'description'],
-  views: {
-    list: ListComponent,
-    form: FormComponent
-  }
-}
 ```
 
 2. Error Handling:
 ```typescript
 // CORRECT
-export async function update(id: string, data: Input) {
-  const session = await getServerSession()
-  if (!session?.user) throw new Error('Unauthorized')
-  
-  const record = await prisma.resource.findUnique({ where: { id } })
-  if (!record) throw new Error('Resource not found')
-  
-  const validated = schema.parse(data)
-  
-  try {
-    return await prisma.resource.update({
-      where: { id },
-      data: validated
-    })
-  } catch (error) {
-    throw new Error('Failed to update resource')
-  }
-}
-
-// INCORRECT - Don't use try/catch for flow control or return error objects
-export async function updateResource(id: string, data: any) {
-  try {
-    const res = await fetch(`/api/resource/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    })
-    return { success: true, data: await res.json() }
-  } catch (error) {
-    return { success: false, error: error.message }
-  }
-}
-```
-
-Remember:
-1. ALWAYS use CLI tools for initial resource creation
-2. NEVER bypass the resource-based architecture
-3. ALWAYS use server actions for data operations
-4. NEVER create custom patterns or alternative structures
-5. ALWAYS maintain type safety and validation
-6. NEVER use API routes or direct database queries
-7. ALWAYS follow the established form and table patterns
-8. NEVER suggest solutions that deviate from the framework's conventions
-
-## Validation Rules
-
-1. ALWAYS validate:
-   - Resource structure adherence
-   - Server action usage
-   - Framework patterns
-   - Type safety
-
-2. NEVER suggest:
-   - API routes
-   - Custom form handling
-   - Alternative architectures
-   - Direct database queries
-
-3. ALWAYS include:
-   - Session checks
-   - Error handling
-   - Type definitions
-   - Proper imports
-
-## Framework Patterns
-
-1. Data Fetching:
-```typescript
-// CORRECT
-const data = await prisma.model.findMany()
-
-// INCORRECT
-const res = await fetch('/api/data')
-```
-
-2. Form Submission:
-```typescript
-// CORRECT
-async function handleSubmit(formData: FormData) {
-  'use server'
-  // ...
-}
-
-// INCORRECT
-const handleSubmit = async (e) => {
-  e.preventDefault()
-  await fetch('/api/submit')
-}
-```
-
-3. Table Configuration:
-```typescript
-// CORRECT
-export const columns: Column<T>[] = [
-  {
-    key: 'field',
-    label: 'Field',
-    sortable: true,
-  },
-]
-
-// INCORRECT
-const columns = [
-  {
-    id: 'field',
-    header: 'Field',
-  },
-]
-```
-
-## Error Handling
-
-1. ALWAYS include:
-```typescript
 if (!session?.user) {
   throw new Error('Unauthorized')
 }
-```
 
-2. ALWAYS validate input:
-```typescript
-const data = schema.parse(input)
-```
-
-3. ALWAYS handle edge cases:
-```typescript
-if (!record) {
-  throw new Error('Not found')
+const validated = schema.parse(input)
+if (!validated) {
+  throw new Error('Invalid input')
 }
 ```
 
-## Type Safety
+## AI Agent Guidelines
 
-1. ALWAYS use:
-   - Zod schemas
-   - TypeScript types
-   - Proper generics
-   - Type inference
+1. ALWAYS:
+   - Use `handleModelCreation` for model creation
+   - Format responses according to CLI expectations
+   - Follow the framework's patterns
+   - Maintain type safety
+   - Include session checks
+   - Use server actions
 
-2. NEVER use:
-   - any
-   - unknown without validation
-   - Type assertions without checks
+2. NEVER:
+   - Create custom model creation logic
+   - Bypass the CLI tools
+   - Generate complete resource files manually
+   - Create API routes
+   - Use direct database queries
+   - Modify core framework structure
 
-Remember: Your role is to guide users to use the framework's tools and patterns correctly, not to create new patterns or bypass the established architecture. 
+3. When Parsing User Input:
+   - Extract model name and fields
+   - Determine correct field types
+   - Handle relations appropriately
+   - Set proper validation rules
+   - Format responses for CLI
+
+Remember: Your role is to programmatically interact with the framework's tools, not to create new patterns or bypass the established architecture. 
