@@ -3,31 +3,12 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import fs from 'fs'
 import path from 'path'
-import { z } from 'zod'
 import prompts from 'prompts'
 import chalk from 'chalk'
-import { format } from 'prettier'
+import { templates } from './templates'
+import { type Field, type ModelConfig } from './types'
 
 const execAsync = promisify(exec)
-
-interface Field {
-  name: string
-  type: string
-  isRequired: boolean
-  isUnique: boolean
-  hasDefault: boolean
-  defaultValue?: string
-  isRelation: boolean
-  relationModel?: string
-  relationField?: string
-  relationOnDelete?: 'CASCADE' | 'SET_NULL' | 'RESTRICT'
-}
-
-interface ModelConfig {
-  name: string
-  fields: Field[]
-  createDashboard: boolean
-}
 
 const FIELD_TYPES = [
   'String',
@@ -41,6 +22,36 @@ const FIELD_TYPES = [
   'Relation',
 ] as const
 
+function validate(value: any, type: string): { isValid: boolean; error?: string } {
+  try {
+    switch (type) {
+      case 'Int':
+        if (!Number.isInteger(Number(value))) {
+          return { isValid: false, error: 'Must be an integer' }
+        }
+        break
+      case 'Float':
+        if (isNaN(Number(value))) {
+          return { isValid: false, error: 'Must be a number' }
+        }
+        break
+      case 'Boolean':
+        if (!['true', 'false'].includes(String(value).toLowerCase())) {
+          return { isValid: false, error: 'Must be true or false' }
+        }
+        break
+      case 'DateTime':
+        if (isNaN(Date.parse(value))) {
+          return { isValid: false, error: 'Must be a valid date' }
+        }
+        break
+    }
+    return { isValid: true }
+  } catch {
+    return { isValid: false, error: 'Invalid value for type' }
+  }
+}
+
 async function getModelConfig(): Promise<ModelConfig> {
   console.log(chalk.cyan('\n🚀 Welcome to the Model Speed Creator!\n'))
 
@@ -48,7 +59,13 @@ async function getModelConfig(): Promise<ModelConfig> {
     type: 'text',
     name: 'modelName',
     message: 'What is the name of your model?',
-    validate: value => value.length > 0 || 'Model name is required'
+    validate: value => {
+      if (!value) return 'Model name is required'
+      if (!/^[A-Z][a-zA-Z]*$/.test(value)) {
+        return 'Model name must start with uppercase and contain only letters'
+      }
+      return true
+    }
   })
 
   const { createDashboard } = await prompts({
@@ -62,7 +79,11 @@ async function getModelConfig(): Promise<ModelConfig> {
     type: 'number',
     name: 'fieldCount',
     message: 'How many fields would you like to create?',
-    validate: value => value > 0 || 'Must create at least one field'
+    validate: value => {
+      if (!value || value < 1) return 'Must create at least one field'
+      if (value > 20) return 'Maximum 20 fields allowed'
+      return true
+    }
   })
 
   const fields: Field[] = []
@@ -83,7 +104,7 @@ async function getModelConfig(): Promise<ModelConfig> {
 
   if (addMore) {
     let adding = true
-    while (adding) {
+    while (adding && fields.length < 20) {
       console.log(chalk.yellow(`\n📝 Additional Field`))
       const field = await promptField()
       fields.push(field)
@@ -110,7 +131,13 @@ async function promptField(): Promise<Field> {
     type: 'text',
     name: 'name',
     message: 'Field name:',
-    validate: value => value.length > 0 || 'Field name is required'
+    validate: (value: string): string | boolean => {
+      if (!value) return 'Field name is required'
+      if (!/^[a-z][a-zA-Z]*$/.test(value)) {
+        return 'Field name must start with lowercase and contain only letters'
+      }
+      return true
+    }
   })
 
   const { type } = await prompts({
@@ -129,13 +156,25 @@ async function promptField(): Promise<Field> {
         type: 'text',
         name: 'relationModel',
         message: 'Related model name:',
-        validate: value => value.length > 0 || 'Related model is required'
+        validate: (value: string): string | boolean => {
+          if (!value) return 'Related model is required'
+          if (!/^[A-Z][a-zA-Z]*$/.test(value)) {
+            return 'Model name must start with uppercase and contain only letters'
+          }
+          return true
+        }
       },
       {
         type: 'text',
         name: 'relationField',
         message: 'Field name in related model:',
-        validate: value => value.length > 0 || 'Field name is required'
+        validate: (value: string): string | boolean => {
+          if (!value) return 'Field name is required'
+          if (!/^[a-z][a-zA-Z]*$/.test(value)) {
+            return 'Field name must start with lowercase and contain only letters'
+          }
+          return true
+        }
       },
       {
         type: 'select',
@@ -179,7 +218,11 @@ async function promptField(): Promise<Field> {
     const { value } = await prompts({
       type: 'text',
       name: 'value',
-      message: 'Default value:'
+      message: 'Default value:',
+      validate: (value: string): string | boolean | Promise<string | boolean> => {
+        const validation = validate(value, type)
+        return validation.isValid || validation.error || false
+      }
     })
     defaultValue = value
   }
@@ -198,40 +241,14 @@ async function promptField(): Promise<Field> {
   }
 }
 
-function generatePrismaSchema(config: ModelConfig): string {
-  const modelName = config.name
-  const fields = config.fields.map(field => {
-    if (field.isRelation) {
-      return [
-        `  ${field.name}Id    String${field.isRequired ? '' : '?'}`,
-        `  ${field.name}      ${field.relationModel}    @relation(fields: [${field.name}Id], references: [id]${field.relationOnDelete ? `, onDelete: ${field.relationOnDelete}` : ''})`
-      ].join('\n')
-    }
-
-    const type = field.type
-    const modifiers = [
-      field.isRequired ? '' : '?',
-      field.isUnique ? ' @unique' : '',
-      field.hasDefault ? ` @default(${field.defaultValue})` : ''
-    ].join('')
-
-    return `  ${field.name}    ${type}${modifiers}`
-  })
-
-  return `model ${modelName} {
-  id          String    @id @default(cuid())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-${fields.join('\n')}
-}`
+function createDirectoryIfNotExists(dirPath: string) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true })
+  }
 }
 
-function generateZodSchema(config: ModelConfig): string {
-  const fields = config.fields.map(field => {
-    if (field.isRelation) {
-      return `  ${field.name}Id: z.string()`
-    }
-
+function generateZodSchema(fields: Field[]): string {
+  return fields.map(field => {
     let zodType = 'z.string()'
     switch (field.type) {
       case 'Int':
@@ -249,93 +266,76 @@ function generateZodSchema(config: ModelConfig): string {
       case 'Json':
         zodType = 'z.any()'
         break
-      case 'BigInt':
-        zodType = 'z.bigint()'
-        break
-      case 'Decimal':
-        zodType = 'z.number()'
-        break
     }
 
     if (!field.isRequired) {
       zodType += '.optional()'
     }
 
+    if (field.hasDefault) {
+      zodType += `.default(${field.defaultValue})`
+    }
+
     return `  ${field.name}: ${zodType}`
-  })
-
-  return `${fields.join(',\n')}`
-}
-
-async function updatePrismaSchema(schema: string) {
-  const schemaPath = path.join(process.cwd(), 'prisma/schema.prisma')
-  const currentSchema = fs.readFileSync(schemaPath, 'utf-8')
-  
-  // Add new model before the last model
-  const updatedSchema = currentSchema + '\n' + schema
-
-  // Format with prettier
-  const formattedSchema = await format(updatedSchema, {
-    parser: 'prisma',
-    semi: false,
-    singleQuote: true,
-  })
-
-  fs.writeFileSync(schemaPath, formattedSchema)
+  }).join(',\n')
 }
 
 async function createModel() {
   try {
+    // Get model config through prompts
     const config = await getModelConfig()
+    const zodSchema = generateZodSchema(config.fields)
 
-    // Preview
-    console.log(chalk.cyan('\n📋 Preview:\n'))
-    
-    console.log(chalk.yellow('Prisma Schema:'))
-    const prismaSchema = generatePrismaSchema(config)
-    console.log(prismaSchema)
-    
-    console.log(chalk.yellow('\nZod Schema Fields:'))
-    const zodSchema = generateZodSchema(config)
-    console.log(zodSchema)
+    // Create resource directory
+    const resourceDir = path.join(process.cwd(), 'src', 'resources', config.name.toLowerCase())
+    createDirectoryIfNotExists(resourceDir)
 
-    const { confirm } = await prompts({
-      type: 'confirm',
-      name: 'confirm',
-      message: 'Does this look correct? Would you like to proceed?',
-      initial: true
+    // Create page directories
+    const pageDir = path.join(process.cwd(), 'src', 'app', 'dashboard', `${config.name.toLowerCase()}s`)
+    createDirectoryIfNotExists(pageDir)
+    createDirectoryIfNotExists(path.join(pageDir, 'new'))
+    createDirectoryIfNotExists(path.join(pageDir, `[${config.name.toLowerCase()}Id]`))
+
+    // Create resource files
+    const files = [
+      { name: 'schema.ts', content: templates.schema(config.name, zodSchema) },
+      { name: 'actions.ts', content: templates.actions(config.name) },
+      { name: 'components.tsx', content: templates.components(config.name, config.fields) },
+      { name: 'routes.tsx', content: templates.routes(config.name, config.fields) },
+      { name: 'index.ts', content: templates.index(config.name, config.fields) },
+    ]
+
+    // Create page files
+    const pageFiles = [
+      { path: path.join(pageDir, 'page.tsx'), content: templates.page(config.name) },
+      { path: path.join(pageDir, 'new', 'page.tsx'), content: templates.newPage(config.name) },
+      { path: path.join(pageDir, `[${config.name.toLowerCase()}Id]`, 'page.tsx'), content: templates.editPage(config.name) },
+    ]
+
+    // Write resource files
+    files.forEach(({ name: fileName, content }) => {
+      const filePath = path.join(resourceDir, fileName)
+      if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, content)
+      } else {
+        console.warn(chalk.yellow(`Warning: File ${fileName} already exists, skipping...`))
+      }
     })
 
-    if (!confirm) {
-      console.log(chalk.red('❌ Operation cancelled'))
-      return
-    }
+    // Write page files
+    pageFiles.forEach(({ path: filePath, content }) => {
+      if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, content)
+      } else {
+        console.warn(chalk.yellow(`Warning: File ${filePath} already exists, skipping...`))
+      }
+    })
 
-    // Update Prisma schema
-    await updatePrismaSchema(prismaSchema)
-    console.log(chalk.green('✅ Updated Prisma schema'))
-
-    // Create resource
-    const zodFields = generateZodSchema(config)
-    await execAsync(`pnpm tsx scripts/create-model.ts --name=${config.name} --fields="${zodFields}"`)
-    console.log(chalk.green('✅ Created resource files'))
-
-    // Create dashboard pages if requested
-    if (config.createDashboard) {
-      await execAsync(
-        `pnpm tsx scripts/create-page.ts --name=${config.name} --route=${config.name.toLowerCase()}s --title="${config.name}s" --description="Manage your ${config.name.toLowerCase()}s"`
-      )
-      console.log(chalk.green('✅ Created dashboard pages'))
-    }
-
-    // Run Prisma generate
-    await execAsync('pnpm prisma generate')
-    console.log(chalk.green('✅ Generated Prisma client'))
-
-    console.log(chalk.cyan('\n🎉 All done! Next steps:'))
+    console.log(chalk.green('\n✨ Model created successfully!'))
+    console.log(chalk.cyan('\nNext steps:'))
     console.log('1. Review the generated files')
     console.log('2. Push your model to the database:')
-    console.log(chalk.dim('   pnpm tsx scripts/push-model.ts'))
+    console.log(chalk.dim('   pnpm prisma db push'))
     console.log('3. Customize the generated components as needed')
 
   } catch (error) {

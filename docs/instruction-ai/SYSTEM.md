@@ -23,7 +23,8 @@ scripts/
 ├── ai-model-handler.ts     # AI model creation handler
 ├── create-page.ts         # Page generation
 ├── create-user.ts         # User management
-└── push-model.ts         # Database schema updates
+├── push-model.ts         # Database schema updates
+└── verify-model.ts      # Model verification and fixes
 ```
 
 3. CLI Tools Available:
@@ -34,7 +35,166 @@ pnpm create-model-speed-ai # AI-powered model creation
 pnpm create-page         # Page creation
 pnpm push-model          # Database schema updates
 pnpm create-user         # User creation
+pnpm verify-model        # Verify and fix model issues
 ```
+
+## Verification Process
+
+1. Schema Verification:
+```typescript
+// Required fields in schema.ts
+export const Schema = z.object({
+  id: z.string().optional(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+  // ... model specific fields
+})
+```
+
+2. Component Verification:
+```typescript
+// Required patterns in components.tsx
+- Controlled inputs: value={field.value || ''}
+- Form submission: handleSubmit = async (values: T)
+- Default values: defaultValues = { field: defaultValue }
+```
+
+3. Actions Verification:
+```typescript
+// Required patterns in actions.ts
+- Error handling: try/catch blocks
+- Path revalidation: revalidatePath()
+- Database client: import { db } from '@/lib/db'
+```
+
+4. Page Verification:
+```typescript
+// Required patterns in page.tsx
+- Authentication: getServerSession()
+- Action props: action={<Button>}
+- Form handling: handleSubmit(formData)
+```
+
+## Error Handling Rules
+
+1. Form Submission:
+```typescript
+// CORRECT
+const handleSubmit = async (values: T) => {
+  const formData = new FormData()
+  Object.entries(values).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      formData.append(key, String(value))
+    }
+  })
+  try {
+    await onSubmit(formData)
+  } catch (error) {
+    console.error('Form error:', error)
+  }
+}
+
+// INCORRECT
+const handleSubmit = (e: FormEvent) => {
+  e.preventDefault()
+  const data = Object.fromEntries(new FormData(e.target))
+  onSubmit(data)
+}
+```
+
+2. Server Actions:
+```typescript
+// CORRECT
+export async function create(data: T) {
+  try {
+    const { id, createdAt, updatedAt, ...rest } = data
+    await db.model.create({ data: rest })
+    revalidatePath('/path')
+  } catch (error) {
+    console.error('Error:', error)
+    throw error
+  }
+}
+
+// INCORRECT
+export async function create(data: any) {
+  await prisma.model.create({ data })
+}
+```
+
+3. Input Handling:
+```typescript
+// CORRECT
+<Input 
+  value={field.value || ''} 
+  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+/>
+
+// INCORRECT
+<Input {...field} />
+```
+
+## Verification Workflow
+
+1. After Model Creation:
+```typescript
+// Always run verification after model creation
+await execAsync(`pnpm verify-model ${modelName}`)
+```
+
+2. Fix Common Issues:
+```typescript
+if (result.hasErrors) {
+  // Ask user to fix
+  const { fix } = await prompts({
+    type: 'confirm',
+    name: 'fix',
+    message: 'Fix issues?'
+  })
+  if (fix) {
+    result.errors.forEach(error => error.fix?.())
+  }
+}
+```
+
+3. Required Checks:
+```typescript
+// 1. Schema fields
+checkRequiredFields(['id', 'createdAt', 'updatedAt'])
+
+// 2. Form handling
+checkFormPatterns(['controlled inputs', 'type conversion'])
+
+// 3. Error handling
+checkErrorHandling(['try/catch', 'error messages'])
+
+// 4. Authentication
+checkAuth(['session', 'redirect'])
+```
+
+## Response Rules
+
+1. When Creating Models:
+   - ALWAYS run verification after creation
+   - Fix common issues automatically
+   - Report unfixable issues to user
+
+2. When Modifying Code:
+   - Check against verification rules
+   - Follow error handling patterns
+   - Maintain type safety
+
+3. When Handling Forms:
+   - Use controlled inputs
+   - Handle type conversion
+   - Proper error handling
+
+4. When Using Server Actions:
+   - Include error handling
+   - Use path revalidation
+   - Remove readonly fields
+
+Remember: Your role is to ensure code quality and consistency through automated verification and fixes.
 
 ## AI Model Creation
 
@@ -82,23 +242,6 @@ const FIELD_TYPES = {
   'Relation': 8
 }
 ```
-
-## Response Rules
-
-1. When asked about creating new resources:
-   - Use `handleModelCreation` to programmatically create models
-   - Format responses according to the CLI's expected input
-   - Handle field types and validations automatically
-
-2. When asked about modifying existing resources:
-   - ONLY modify within existing file structure
-   - NEVER create alternative patterns
-   - ALWAYS use server actions instead of API routes
-
-3. When handling forms and tables:
-   - USE built-in form components
-   - USE DataTable component for lists
-   - FOLLOW existing patterns in routes.ts
 
 ## Code Generation Rules
 

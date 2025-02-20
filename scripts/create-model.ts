@@ -1,235 +1,15 @@
+#!/usr/bin/env node
 import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
+import chalk from 'chalk'
+import { templates } from './templates'
+import { type Field } from './types'
 
 const modelSchema = z.object({
   name: z.string().min(1, 'Model name is required'),
   fields: z.string().min(1, 'Fields are required'),
 })
-
-const templates = {
-  schema: (name: string, fields: string) => `import { z } from 'zod'
-
-export const ${name}Schema = z.object({
-  ${fields}
-})
-
-export type ${name} = z.infer<typeof ${name}Schema>`,
-
-  actions: (name: string) => `import { prisma } from '@/lib/prisma'
-import { ${name}Schema, type ${name} } from './schema'
-
-export async function list() {
-  return await prisma.${name.toLowerCase()}.findMany({
-    orderBy: { createdAt: 'desc' },
-  })
-}
-
-export async function getById(id: string) {
-  return await prisma.${name.toLowerCase()}.findUnique({
-    where: { id },
-  })
-}
-
-export async function create(data: Omit<${name}, 'id' | 'createdAt' | 'updatedAt'>) {
-  const validated = ${name}Schema.parse(data)
-
-  return await prisma.${name.toLowerCase()}.create({
-    data: validated,
-  })
-}
-
-export async function update(id: string, data: Partial<${name}>) {
-  const validated = ${name}Schema.partial().parse(data)
-
-  return await prisma.${name.toLowerCase()}.update({
-    where: { id },
-    data: validated,
-  })
-}
-
-export async function remove(id: string) {
-  return await prisma.${name.toLowerCase()}.delete({
-    where: { id },
-  })
-}`,
-
-  components: (name: string) => `'use client'
-
-import { type ${name} } from './schema'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
-import { Button } from '@/components/ui/button'
-
-interface ${name}FormProps {
-  defaultValues?: Partial<${name}>
-  onSubmit: (data: FormData) => Promise<void>
-}
-
-export function ${name}Form({ defaultValues, onSubmit }: ${name}FormProps) {
-  const form = useForm({
-    defaultValues,
-  })
-
-  return (
-    <Form {...form}>
-      <form action={onSubmit} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="content"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Content</FormLabel>
-              <FormControl>
-                <Textarea {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="published"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Published</FormLabel>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button type="submit">Save</Button>
-      </form>
-    </Form>
-  )
-}`,
-
-  routes: (name: string) => `import { type Column } from '@/resources/config'
-import { type ${name} } from './schema'
-import { Edit, Trash } from 'lucide-react'
-
-export const columns: Column<${name}>[] = [
-  {
-    key: 'title',
-    label: 'Title',
-    type: 'text',
-    sortable: true,
-    searchable: true,
-  },
-  {
-    key: 'published',
-    label: 'Status',
-    type: 'badge',
-    sortable: true,
-    color: {
-      true: 'success',
-      false: 'secondary',
-    },
-    valueLabel: {
-      true: 'Published',
-      false: 'Draft',
-    },
-  },
-  {
-    key: 'actions',
-    label: '',
-    type: 'actions',
-    actions: [
-      {
-        icon: Edit,
-        label: 'Edit',
-        onClick: (row) => {
-          window.location.href = \`/dashboard/${name.toLowerCase()}/\${row.id}\`
-        },
-      },
-      {
-        icon: Trash,
-        label: 'Delete',
-        onClick: async (row) => {
-          if (!confirm('Are you sure?')) return
-          await fetch(\`/api/${name.toLowerCase()}/\${row.id}\`, {
-            method: 'DELETE',
-          })
-          window.location.reload()
-        },
-      },
-    ],
-  },
-]`,
-
-  index: (name: string) => `import * as actions from './actions'
-import * as components from './components'
-import * as routes from './routes'
-import { ${name}Schema } from './schema'
-
-export const ${name.toLowerCase()} = {
-  actions,
-  components,
-  routes,
-  schema: ${name}Schema,
-  list: {
-    columns: routes.columns,
-  },
-  form: {
-    sections: [
-      {
-        title: 'General',
-        fields: [
-          {
-            name: 'title',
-            type: 'text',
-            label: 'Title',
-            placeholder: 'Enter title',
-          },
-          {
-            name: 'content',
-            type: 'editor',
-            label: 'Content',
-            placeholder: 'Enter content',
-          },
-          {
-            name: 'published',
-            type: 'switch',
-            label: 'Published',
-          },
-        ],
-      },
-    ],
-  },
-}`,
-}
 
 function createDirectoryIfNotExists(dirPath: string) {
   if (!fs.existsSync(dirPath)) {
@@ -237,66 +17,115 @@ function createDirectoryIfNotExists(dirPath: string) {
   }
 }
 
-function createModel() {
-  const args = process.argv.slice(2)
-  const modelData: Record<string, string> = {}
-
-  // Parse command line arguments
-  args.forEach(arg => {
-    const [key, value] = arg.split('=')
-    if (key.startsWith('--')) {
-      modelData[key.slice(2)] = value
+function parseFields(fields: string): Field[] {
+  // Convert Zod schema string to Field array
+  const lines = fields.split('\n')
+  return lines.map(line => {
+    const [name, type] = line.split(':').map(s => s.trim())
+    const isRequired = !type.includes('optional')
+    const isUnique = type.includes('unique')
+    const hasDefault = type.includes('default')
+    
+    let fieldType = 'String'
+    if (type.includes('number')) fieldType = 'number'
+    if (type.includes('boolean')) fieldType = 'Boolean'
+    if (type.includes('date')) fieldType = 'DateTime'
+    
+    return {
+      name,
+      type: fieldType,
+      isRequired,
+      isUnique,
+      hasDefault,
+      isRelation: false,
     }
   })
+}
 
+function createModel() {
   try {
+    const args = process.argv.slice(2)
+    const modelData: Record<string, string> = {}
+
+    // Parse command line arguments
+    args.forEach(arg => {
+      const [key, value] = arg.split('=')
+      if (key.startsWith('--')) {
+        modelData[key.slice(2)] = value
+      }
+    })
+
     // Validate model data
     const validatedData = modelSchema.parse(modelData)
     const { name, fields } = validatedData
+    const parsedFields = parseFields(fields)
 
     // Create resource directory
     const resourceDir = path.join(process.cwd(), 'src', 'resources', name.toLowerCase())
     createDirectoryIfNotExists(resourceDir)
 
+    // Create page directories
+    const pageDir = path.join(process.cwd(), 'src', 'app', 'dashboard', `${name.toLowerCase()}s`)
+    createDirectoryIfNotExists(pageDir)
+    createDirectoryIfNotExists(path.join(pageDir, 'new'))
+    createDirectoryIfNotExists(path.join(pageDir, `[${name.toLowerCase()}Id]`))
+
     // Create resource files
-    fs.writeFileSync(
-      path.join(resourceDir, 'schema.ts'),
-      templates.schema(name, fields)
-    )
+    const files = [
+      { name: 'schema.ts', content: templates.schema(name, fields) },
+      { name: 'actions.ts', content: templates.actions(name) },
+      { name: 'components.tsx', content: templates.components(name, parsedFields) },
+      { name: 'routes.tsx', content: templates.routes(name, parsedFields) },
+      { name: 'index.ts', content: templates.index(name, parsedFields) },
+    ]
 
-    fs.writeFileSync(
-      path.join(resourceDir, 'actions.ts'),
-      templates.actions(name)
-    )
+    // Create page files
+    const pageFiles = [
+      { path: path.join(pageDir, 'page.tsx'), content: templates.page(name) },
+      { path: path.join(pageDir, 'new', 'page.tsx'), content: templates.newPage(name) },
+      { path: path.join(pageDir, `[${name.toLowerCase()}Id]`, 'page.tsx'), content: templates.editPage(name) },
+    ]
 
-    fs.writeFileSync(
-      path.join(resourceDir, 'components.tsx'),
-      templates.components(name)
-    )
+    // Write resource files
+    files.forEach(({ name: fileName, content }) => {
+      const filePath = path.join(resourceDir, fileName)
+      if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, content)
+      } else {
+        console.warn(chalk.yellow(`Warning: File ${fileName} already exists, skipping...`))
+      }
+    })
 
-    fs.writeFileSync(
-      path.join(resourceDir, 'routes.ts'),
-      templates.routes(name)
-    )
+    // Write page files
+    pageFiles.forEach(({ path: filePath, content }) => {
+      if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, content)
+      } else {
+        console.warn(chalk.yellow(`Warning: File ${filePath} already exists, skipping...`))
+      }
+    })
 
-    fs.writeFileSync(
-      path.join(resourceDir, 'index.ts'),
-      templates.index(name)
-    )
-
-    console.log('Resource created successfully:')
-    console.log(`Files created in src/resources/${name.toLowerCase()}/`)
+    console.log(chalk.green('\nResource created successfully:'))
+    console.log(`Files created in ${chalk.cyan(`src/resources/${name.toLowerCase()}/`)}`)
     console.log('\nFiles created:')
-    console.log(`- schema.ts`)
-    console.log(`- actions.ts`)
-    console.log(`- components.tsx`)
-    console.log(`- routes.ts`)
-    console.log(`- index.ts`)
+    files.forEach(({ name: fileName }) => {
+      console.log(chalk.dim(`- ${fileName}`))
+    })
+    pageFiles.forEach(({ path: filePath }) => {
+      console.log(chalk.dim(`- ${filePath}`))
+    })
+
+    console.log(chalk.cyan('\nNext steps:'))
+    console.log('1. Update the schema fields in schema.ts')
+    console.log('2. Customize the form fields in index.ts')
+    console.log('3. Add the columns configuration in routes.tsx')
+    console.log('4. Run pnpm prisma generate to update types')
+
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Validation error:', error.errors)
+      console.error(chalk.red('Validation error:'), error.errors)
     } else {
-      console.error('Error creating model:', error)
+      console.error(chalk.red('Error creating model:'), error)
     }
     process.exit(1)
   }

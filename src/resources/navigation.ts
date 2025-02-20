@@ -1,7 +1,9 @@
 import { LayoutDashboard } from 'lucide-react'
 import type { NavigationItem } from './config'
 import { posts } from './posts'
+import { student } from './student'
 
+// Add new navigation items here
 export const navigation: NavigationItem[] = [
   {
     title: 'Overview',
@@ -10,6 +12,7 @@ export const navigation: NavigationItem[] = [
     roles: ['ADMIN', 'EDITOR', 'VIEWER'],
   },
   posts.navigation,
+  student.navigation,
 ]
 
 export function getNavigationByRole(role: string) {
