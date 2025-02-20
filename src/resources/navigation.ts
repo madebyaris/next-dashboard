@@ -1,18 +1,34 @@
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutDashboard, Settings, ShoppingBag } from 'lucide-react'
 import type { NavigationItem } from './config'
-import { posts } from './posts'
-import { student } from './student'
+import { Role } from '@prisma/client'
 
 // Add new navigation items here
+export interface NavItem {
+  title: string
+  href: string
+  icon?: string
+  roles?: Role[]
+}
+
 export const navigation: NavigationItem[] = [
   {
     title: 'Overview',
     path: '/dashboard',
     icon: LayoutDashboard,
-    roles: ['ADMIN', 'EDITOR', 'VIEWER'],
+    roles: [Role.ADMIN, Role.EDITOR, Role.VIEWER],
   },
-  posts.navigation,
-  student.navigation,
+  {
+    title: 'Products',
+    path: '/dashboard/products',
+    icon: ShoppingBag,
+    roles: [Role.ADMIN, Role.EDITOR],
+  },
+  {
+    title: 'Settings',
+    path: '/dashboard/settings',
+    icon: Settings,
+    roles: [Role.ADMIN],
+  },
 ]
 
 export function getNavigationByRole(role: string) {

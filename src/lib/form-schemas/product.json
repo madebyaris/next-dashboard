@@ -1,0 +1,60 @@
+{
+  "name": "Product",
+  "description": "Product management form",
+  "schema": {
+    "type": "object",
+    "required": ["name", "price", "status"],
+    "properties": {
+      "name": {
+        "type": "string",
+        "title": "Product Name",
+        "description": "Name of the product",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "price": {
+        "type": "number",
+        "title": "Price",
+        "description": "Product price",
+        "minimum": 0
+      },
+      "description": {
+        "type": "string",
+        "title": "Description",
+        "description": "Product description",
+        "maxLength": 500
+      },
+      "status": {
+        "type": "string",
+        "title": "Status",
+        "description": "Product status",
+        "enum": ["draft", "published", "archived"],
+        "default": "draft"
+      },
+      "category": {
+        "type": "string",
+        "title": "Category",
+        "description": "Product category",
+        "enum": ["electronics", "clothing", "food", "other"],
+        "default": "other"
+      },
+      "inStock": {
+        "type": "boolean",
+        "title": "In Stock",
+        "description": "Whether the product is in stock",
+        "default": true
+      }
+    }
+  },
+  "uiSchema": {
+    "description": {
+      "ui:widget": "textarea"
+    },
+    "status": {
+      "ui:widget": "select"
+    },
+    "category": {
+      "ui:widget": "select"
+    }
+  }
+} 

@@ -1,41 +1,30 @@
-import { DashboardShell } from '@/components/dashboard/shell'
-import { ProductForm } from '@/resources/product/components'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-import { product } from '@/resources/product'
-import { type Product } from '@/resources/product/schema'
+'use client'
 
-export default async function NewProductPage() {
-  const session = await getServerSession(authOptions)
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { productResource } from '@/resources/products'
 
-  if (!session?.user) {
-    redirect('/auth/signin')
+export default function NewProductPage() {
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (data: any) => {
+    try {
+      setIsSubmitting(true)
+      await productResource.createApiHandlers().create(data)
+      router.push('/dashboard/products')
+    } catch (error) {
+      console.error('Failed to create product:', error)
+      alert('Failed to create product')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  async function handleSubmit(formData: FormData) {
-    'use server'
-    
-    if (!session?.user) {
-      throw new Error('Not authenticated')
-    }
-    
-    const data = {
-      name: formData.get('name') as string,
-      price: parseFloat(formData.get('price') as string),
-      status: formData.get('status') as Product['status'],
-    }
-
-    await product.actions.create(data)
-    redirect('/dashboard/products')
-  }
-
-  return (
-    <DashboardShell
-      title="Create Product"
-      description="Create a new product"
-    >
-      <ProductForm onSubmit={handleSubmit} />
-    </DashboardShell>
-  )
-}
+  return productResource.createLayout({
+    children: productResource.createForm({
+      onSubmit: handleSubmit,
+      isSubmitting,
+    }),
+  })
+} 

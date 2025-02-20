@@ -1,43 +1,61 @@
-import { DashboardShell } from '@/components/dashboard/shell'
-import { DataTable } from '@/components/ui/data-table'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { PlusCircle } from 'lucide-react'
-import Link from 'next/link'
-import { product } from '@/resources/product'
+import { productResource } from '@/resources/products'
 
-export const metadata = {
-  title: 'Products',
-  description: 'Manage your products',
-}
+export default function ProductsPage() {
+  const router = useRouter()
+  const [data, setData] = useState<any>({ items: [], total: 0 })
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const [isLoading, setIsLoading] = useState(true)
 
-export default async function ProductPage() {
-  const data = await product.actions.list()
+  const loadData = async () => {
+    try {
+      setIsLoading(true)
+      const result = await productResource.createApiHandlers().getList({
+        page: pageIndex + 1,
+        limit: pageSize,
+      })
+      setData(result)
+    } catch (error) {
+      console.error('Failed to load products:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-  return (
-    <DashboardShell
-      title="Products"
-      description="Manage your products"
-      action={
-        <Button asChild>
-          <Link href="/dashboard/products/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add New
-          </Link>
-        </Button>
-      }
-    >
-      <ProductList data={data} />
-    </DashboardShell>
-  )
-}
+  // Load data on mount and when pagination changes
+  useEffect(() => {
+    loadData()
+  }, [pageIndex, pageSize])
 
-function ProductList({ data }: { data: any[] }) {
-  return (
-    <DataTable
-      columns={product.list.columns}
-      data={data}
-      searchKey="name"
-      pageSize={10}
-    />
-  )
-}
+  return productResource.createLayout({
+    children: (
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <Button onClick={() => router.push('/dashboard/products/new')}>
+            Create Product
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div>Loading...</div>
+        ) : (
+          productResource.createTable({
+            data: data.items,
+            pageCount: data.total,
+            pageIndex,
+            pageSize,
+            onPaginationChange: (newPageIndex, newPageSize) => {
+              setPageIndex(newPageIndex)
+              setPageSize(newPageSize)
+            },
+          })
+        )}
+      </div>
+    ),
+  })
+} 

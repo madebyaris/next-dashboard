@@ -102,25 +102,25 @@ export async function remove(id: string) {
               )}
             />`
           break
-        case 'DateTime':
+        case 'Enum':
+          const enumValues = field.enumValues || []
           component = `
             <FormField
               control={form.control}
               name="${field.name}"
-              render={({ field: { value, onChange, ...field } }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>${field.name}</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="date" 
-                      {...field}
-                      value={value instanceof Date ? value.toISOString().split('T')[0] : value}
-                      onChange={(e) => {
-                        const date = e.target.value ? new Date(e.target.value) : null
-                        onChange(date)
-                      }}
-                    />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select ${field.name.toLowerCase()}" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      ${enumValues.map(value => `<SelectItem value="${value}">${value.charAt(0).toUpperCase() + value.slice(1)}</SelectItem>`).join('\n')}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -137,7 +137,7 @@ export async function remove(id: string) {
                   <FormControl>
                     <Input 
                       type="number"
-                      placeholder="Enter ${field.name}"
+                      placeholder="Enter ${field.name.toLowerCase()}"
                       {...field}
                       value={field.value || ''}
                       onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
@@ -160,7 +160,8 @@ export async function remove(id: string) {
                     <Input 
                       type="number"
                       step="0.01"
-                      placeholder="Enter ${field.name}"
+                      min="0"
+                      placeholder="Enter ${field.name.toLowerCase()}"
                       {...field}
                       value={field.value || ''}
                       onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
@@ -180,11 +181,18 @@ export async function remove(id: string) {
                 <FormItem>
                   <FormLabel>${field.name}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Enter ${field.name}"
-                      {...field}
-                      value={field.value || ''}
-                    />
+                    ${field.name.includes('description') || field.name.includes('features') ? 
+                      `<Textarea 
+                        placeholder="Enter ${field.name.toLowerCase()}"
+                        {...field}
+                        value={field.value || ''}
+                      />` :
+                      `<Input 
+                        placeholder="Enter ${field.name.toLowerCase()}"
+                        {...field}
+                        value={field.value || ''}
+                      />`
+                    }
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -197,10 +205,11 @@ export async function remove(id: string) {
     return `'use client'
 
 import { type ${name} } from './schema'
+import { useRouter } from 'next/navigation'
+import React from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ${name}Schema } from './schema'
-import { useRouter } from 'next/navigation'
 import {
   Form,
   FormControl,
@@ -212,7 +221,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface ${name}FormProps {
   defaultValues?: Partial<${name}>
@@ -231,8 +241,8 @@ export function ${name}Form({ defaultValues, onSubmit }: ${name}FormProps) {
           case 'Int':
           case 'Float':
             return `${field.name}: 0`
-          case 'DateTime':
-            return `${field.name}: new Date()`
+          case 'Enum':
+            return `${field.name}: '${field.enumValues?.[0] || ''}'`
           default:
             return `${field.name}: ''`
         }
@@ -245,11 +255,7 @@ export function ${name}Form({ defaultValues, onSubmit }: ${name}FormProps) {
     const formData = new FormData()
     Object.entries(values).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        if (value instanceof Date) {
-          formData.append(key, value.toISOString())
-        } else {
-          formData.append(key, String(value))
-        }
+        formData.append(key, String(value))
       }
     })
     
@@ -265,10 +271,19 @@ export function ${name}Form({ defaultValues, onSubmit }: ${name}FormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-        <div className="grid gap-4 md:grid-cols-2">
-          ${formFields}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid gap-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                ${formFields}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button type="submit">Save ${name}</Button>
         </div>
-        <Button type="submit">Save</Button>
       </form>
     </Form>
   )
@@ -290,26 +305,87 @@ export function ${name}Form({ defaultValues, onSubmit }: ${name}FormProps) {
       },
     }`
           break
-        case 'DateTime':
-          column = `
+        case 'Enum':
+          if (field.name === 'status' || field.name === 'condition') {
+            column = `
     {
       accessorKey: '${field.name}',
       header: '${field.name}',
       cell: ({ getValue }) => {
         const value = getValue() as string
-        return new Date(value).toLocaleDateString()
+        const variants = {
+          ${field.enumValues?.map(v => `'${v}': '${
+            v === 'available' || v === 'new' ? 'success' :
+            v === 'sold' || v === 'used' ? 'secondary' :
+            'default'
+          }'`).join(',\n          ')}
+        } as const
+        return (
+          <Badge variant={variants[value]}>
+            {value === 'certified' ? 'Certified Pre-Owned' : value.charAt(0).toUpperCase() + value.slice(1)}
+          </Badge>
+        )
       },
     }`
+          } else {
+            column = `
+    {
+      accessorKey: '${field.name}',
+      header: '${field.name}',
+      cell: ({ getValue }) => {
+        const value = getValue() as string
+        return value.charAt(0).toUpperCase() + value.slice(1)
+      },
+    }`
+          }
+          break
+        case 'Float':
+          if (field.name === 'price') {
+            column = `
+    {
+      accessorKey: '${field.name}',
+      header: '${field.name}',
+      cell: ({ getValue }) => {
+        const value = getValue() as number
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(value)
+      },
+    }`
+          } else if (field.name === 'mileage') {
+            column = `
+    {
+      accessorKey: '${field.name}',
+      header: '${field.name}',
+      cell: ({ getValue }) => {
+        const value = getValue() as number
+        return \`\${value.toLocaleString()} km\`
+      },
+    }`
+          } else {
+            column = `
+    {
+      accessorKey: '${field.name}',
+      header: '${field.name}',
+      cell: ({ getValue }) => {
+        const value = getValue() as number
+        return value.toLocaleString()
+      },
+    }`
+          }
           break
         default:
-          column = `
+          if (!field.name.includes('description') && !field.name.includes('features')) {
+            column = `
     {
       accessorKey: '${field.name}',
       header: '${field.name}',
     }`
+          }
       }
       return column
-    }).join(',')
+    }).filter(Boolean).join(',')
 
     return `'use client'
 

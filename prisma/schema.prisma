@@ -42,10 +42,10 @@ model User {
   role          Role      @default(VIEWER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  posts         Post[]
   settings      Settings[]
   accounts      Account[]
   sessions      Session[]
+  products      Product[]
 }
 
 model VerificationToken {
@@ -56,17 +56,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Post {
-  id          String    @id @default(cuid())
-  title       String
-  content     String    @db.Text
-  published   Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  authorId    String
-  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-}
-
 model Settings {
   id        String   @id @default(cuid())
   key       String   @unique
@@ -75,4 +64,26 @@ model Settings {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  price       Float
+  description String?
+  status      String   @default("draft")
+  category    String   @default("other")
+  inStock     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  VIEWER
 }
