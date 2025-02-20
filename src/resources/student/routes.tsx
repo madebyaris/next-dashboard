@@ -6,6 +6,7 @@ import { type Student } from './schema'
 import { Edit, Trash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import * as actions from './actions'
 
 type StudentWithId = Student & { id: string }
 
@@ -74,6 +75,18 @@ export const columns: ColumnDef<StudentWithId>[] = [
     id: 'actions',
     cell: ({ row }) => {
       const item = row.original
+
+      const handleDelete = async () => {
+        if (!confirm('Are you sure?')) return
+        try {
+          await actions.remove(item.id)
+          window.location.reload()
+        } catch (error) {
+          console.error('Error deleting student:', error)
+          alert('Failed to delete student')
+        }
+      }
+
       return (
         <div className="flex items-center gap-2">
           <Button
@@ -88,13 +101,7 @@ export const columns: ColumnDef<StudentWithId>[] = [
           <Button
             variant="ghost"
             size="icon"
-            onClick={async () => {
-              if (!confirm('Are you sure?')) return
-              await fetch(`/api/students/${item.id}`, {
-                method: 'DELETE',
-              })
-              window.location.reload()
-            }}
+            onClick={handleDelete}
           >
             <Trash className="h-4 w-4" />
           </Button>

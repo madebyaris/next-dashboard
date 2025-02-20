@@ -9,6 +9,7 @@ export interface Field {
   relationModel?: string
   relationField?: string
   relationOnDelete?: 'CASCADE' | 'SET_NULL' | 'RESTRICT'
+  enumValues?: string[]
 }
 
 export interface ModelConfig {

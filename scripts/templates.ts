@@ -114,8 +114,11 @@ export async function remove(id: string) {
                     <Input 
                       type="date" 
                       {...field}
-                      value={value || ''}
-                      onChange={(e) => onChange(e.target.value)}
+                      value={value instanceof Date ? value.toISOString().split('T')[0] : value}
+                      onChange={(e) => {
+                        const date = e.target.value ? new Date(e.target.value) : null
+                        onChange(date)
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -229,7 +232,7 @@ export function ${name}Form({ defaultValues, onSubmit }: ${name}FormProps) {
           case 'Float':
             return `${field.name}: 0`
           case 'DateTime':
-            return `${field.name}: new Date().toISOString().split('T')[0]`
+            return `${field.name}: new Date()`
           default:
             return `${field.name}: ''`
         }
@@ -242,7 +245,11 @@ export function ${name}Form({ defaultValues, onSubmit }: ${name}FormProps) {
     const formData = new FormData()
     Object.entries(values).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        formData.append(key, String(value))
+        if (value instanceof Date) {
+          formData.append(key, value.toISOString())
+        } else {
+          formData.append(key, String(value))
+        }
       }
     })
     
@@ -312,6 +319,7 @@ import { type ${name} } from './schema'
 import { Edit, Trash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import * as actions from './actions'
 
 type ${name}WithId = ${name} & { id: string }
 
@@ -320,6 +328,18 @@ export const columns: ColumnDef<${name}WithId>[] = [${columns},
     id: 'actions',
     cell: ({ row }) => {
       const item = row.original
+
+      const handleDelete = async () => {
+        if (!confirm('Are you sure?')) return
+        try {
+          await actions.remove(item.id)
+          window.location.reload()
+        } catch (error) {
+          console.error('Error deleting ${name.toLowerCase()}:', error)
+          alert('Failed to delete ${name.toLowerCase()}')
+        }
+      }
+
       return (
         <div className="flex items-center gap-2">
           <Button
@@ -334,13 +354,7 @@ export const columns: ColumnDef<${name}WithId>[] = [${columns},
           <Button
             variant="ghost"
             size="icon"
-            onClick={async () => {
-              if (!confirm('Are you sure?')) return
-              await fetch(\`/api/${name.toLowerCase()}s/\${item.id}\`, {
-                method: 'DELETE',
-              })
-              window.location.reload()
-            }}
+            onClick={handleDelete}
           >
             <Trash className="h-4 w-4" />
           </Button>
@@ -353,7 +367,6 @@ export const columns: ColumnDef<${name}WithId>[] = [${columns},
 
   index: (name: string, fields: Field[]) => `import * as actions from './actions'
 import * as components from './components'
-import { columns } from './routes'
 import { ${name}Schema } from './schema'
 import { Package } from 'lucide-react'
 
@@ -361,7 +374,7 @@ export const ${name.toLowerCase()} = {
   actions,
   components,
   list: {
-    columns,
+    columns: () => import('./routes').then(mod => mod.columns),
   },
   form: {
     sections: [
@@ -387,20 +400,40 @@ export const ${name.toLowerCase()} = {
   },
 }`,
 
-  page: (name: string) => `import { DashboardShell } from '@/components/dashboard/shell'
+  page: (name: string) => `import { Metadata } from 'next'
+import { ${name}List } from './components'
+
+export const metadata: Metadata = {
+  title: '${name}s',
+  description: 'Manage your ${name.toLowerCase()}s',
+}
+
+export default function ${name}Page() {
+  return <${name}List />
+}`,
+
+  pageComponents: (name: string) => `'use client'
+
+import { DashboardShell } from '@/components/dashboard/shell'
 import { DataTable } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
 import { PlusCircle } from 'lucide-react'
 import Link from 'next/link'
 import { ${name.toLowerCase()} } from '@/resources/${name.toLowerCase()}'
+import { useEffect, useState } from 'react'
+import { type ColumnDef } from '@tanstack/react-table'
 
-export const metadata = {
-  title: '${name}s',
-  description: 'Manage your ${name.toLowerCase()}s',
-}
+export function ${name}List() {
+  const [data, setData] = useState<any[]>([])
+  const [columns, setColumns] = useState<ColumnDef<any>[]>([])
 
-export default async function ${name}Page() {
-  const data = await ${name.toLowerCase()}.actions.list()
+  useEffect(() => {
+    // Load data
+    ${name.toLowerCase()}.actions.list().then(setData)
+    
+    // Load columns
+    ${name.toLowerCase()}.list.columns().then(setColumns)
+  }, [])
 
   return (
     <DashboardShell
@@ -415,19 +448,13 @@ export default async function ${name}Page() {
         </Button>
       }
     >
-      <${name}List data={data} />
+      <DataTable
+        columns={columns}
+        data={data}
+        searchKey="name"
+        pageSize={10}
+      />
     </DashboardShell>
-  )
-}
-
-function ${name}List({ data }: { data: any[] }) {
-  return (
-    <DataTable
-      columns={${name.toLowerCase()}.list.columns}
-      data={data}
-      searchKey="name"
-      pageSize={10}
-    />
   )
 }`,
 

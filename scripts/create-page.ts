@@ -10,26 +10,46 @@ const pageSchema = z.object({
 })
 
 const templates = {
-  page: (name: string, title: string, description: string = '') => `import { DashboardShell } from '@/components/dashboard/shell'
+  page: (name: string, title: string, description: string = '') => `import { Metadata } from 'next'
+import { ${name}List } from './components'
+
+export const metadata: Metadata = {
+  title: '${title}',
+  description: '${description}',
+}
+
+export default function ${name}Page() {
+  return <${name}List />
+}`,
+
+  components: (name: string, title: string, description: string = '') => `'use client'
+
+import { DashboardShell } from '@/components/dashboard/shell'
 import { DataTable } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
 import { PlusCircle } from 'lucide-react'
 import Link from 'next/link'
 import { ${name.toLowerCase()} } from '@/resources/${name.toLowerCase()}'
+import { useEffect, useState } from 'react'
+import { type ColumnDef } from '@tanstack/react-table'
 
-export const metadata = {
-  title: '${title}',
-  description: '${description}',
-}
+export function ${name}List() {
+  const [data, setData] = useState<any[]>([])
+  const [columns, setColumns] = useState<ColumnDef<any>[]>([])
 
-export default async function ${name}Page() {
-  const data = await ${name.toLowerCase()}.actions.list()
+  useEffect(() => {
+    // Load data
+    ${name.toLowerCase()}.actions.list().then(setData)
+    
+    // Load columns
+    ${name.toLowerCase()}.list.columns().then(setColumns)
+  }, [])
 
   return (
     <DashboardShell
       title="${title}"
       description="${description}"
-      actions={
+      action={
         <Button asChild>
           <Link href="/dashboard/${name.toLowerCase()}/new">
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -38,19 +58,13 @@ export default async function ${name}Page() {
         </Button>
       }
     >
-      <${name}List data={data} />
+      <DataTable
+        columns={columns}
+        data={data}
+        searchKey="name"
+        pageSize={10}
+      />
     </DashboardShell>
-  )
-}
-
-function ${name}List({ data }: { data: any[] }) {
-  return (
-    <DataTable
-      columns={${name.toLowerCase()}.list.columns}
-      data={data}
-      searchKey="title"
-      pageSize={10}
-    />
   )
 }`,
 
@@ -75,13 +89,9 @@ export default async function New${name}Page() {
       throw new Error('Not authenticated')
     }
     
-    const data = {
-      title: formData.get('title') as string,
-      content: formData.get('content') as string,
-      published: formData.get('published') === 'true',
-    }
-
+    const data = Object.fromEntries(formData.entries())
     await ${name.toLowerCase()}.actions.create(data)
+    redirect('/dashboard/${name.toLowerCase()}s')
   }
 
   return (
@@ -120,12 +130,7 @@ export default async function Edit${name}Page({ params }: { params: PageParams }
       throw new Error('Not authenticated')
     }
     
-    const data = {
-      title: formData.get('title') as string,
-      content: formData.get('content') as string,
-      published: formData.get('published') === 'true',
-    }
-
+    const data = Object.fromEntries(formData.entries())
     await ${name.toLowerCase()}.actions.update(${name.toLowerCase()}Id, data)
   }
 
@@ -209,6 +214,12 @@ function createPage() {
       templates.page(pageName, title, description)
     )
 
+    // Create components.tsx
+    fs.writeFileSync(
+      path.join(pageDir, 'components.tsx'),
+      templates.components(pageName, title, description)
+    )
+
     // Create new page
     const newDir = path.join(pageDir, 'new')
     createDirectoryIfNotExists(newDir)
@@ -241,6 +252,7 @@ function createPage() {
     console.log(`Route: /dashboard/${route}`)
     console.log(`Files created:`)
     console.log(`- page.tsx`)
+    console.log(`- components.tsx`)
     console.log(`- new/page.tsx`)
     console.log(`- [${name.toLowerCase()}Id]/page.tsx`)
     console.log(`- loading.tsx`)

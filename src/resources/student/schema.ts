@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-const dateSchema = z.string().transform((str) => new Date(str))
+const dateSchema = z.preprocess((arg) => {
+  if (typeof arg === 'string') {
+    return new Date(arg)
+  }
+  return arg
+}, z.date())
 
 export const StudentSchema = z.object({
   id: z.string().optional(),

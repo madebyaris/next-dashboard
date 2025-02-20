@@ -31,11 +31,11 @@ export function StudentForm({ defaultValues, onSubmit }: StudentFormProps) {
       name: '',
       email: '',
       studentId: '',
-      dateOfBirth: new Date().toISOString().split('T')[0],
+      dateOfBirth: new Date(),
       grade: 0,
       major: '',
       gpa: 0,
-      enrollmentDate: new Date().toISOString().split('T')[0],
+      enrollmentDate: new Date(),
       status: 'ACTIVE',
       isInternational: false,
       ...defaultValues,
@@ -46,15 +46,8 @@ export function StudentForm({ defaultValues, onSubmit }: StudentFormProps) {
     const formData = new FormData()
     Object.entries(values).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        if (key === 'dateOfBirth' || key === 'enrollmentDate') {
-          // Convert date strings to proper format
-          formData.append(key, new Date(value).toISOString())
-        } else if (typeof value === 'boolean') {
-          // Handle boolean values
-          formData.append(key, value.toString())
-        } else if (typeof value === 'number') {
-          // Handle numeric values
-          formData.append(key, value.toString())
+        if (value instanceof Date) {
+          formData.append(key, value.toISOString())
         } else {
           formData.append(key, String(value))
         }
@@ -139,10 +132,10 @@ export function StudentForm({ defaultValues, onSubmit }: StudentFormProps) {
                   <Input 
                     type="date" 
                     {...field}
-                    value={value ? new Date(value).toISOString().split('T')[0] : ''}
+                    value={value instanceof Date ? value.toISOString().split('T')[0] : value}
                     onChange={(e) => {
                       const date = e.target.value ? new Date(e.target.value) : null
-                      onChange(date?.toISOString() || '')
+                      onChange(date)
                     }}
                   />
                 </FormControl>
@@ -222,10 +215,10 @@ export function StudentForm({ defaultValues, onSubmit }: StudentFormProps) {
                   <Input 
                     type="date" 
                     {...field}
-                    value={value ? new Date(value).toISOString().split('T')[0] : ''}
+                    value={value instanceof Date ? value.toISOString().split('T')[0] : value}
                     onChange={(e) => {
                       const date = e.target.value ? new Date(e.target.value) : null
-                      onChange(date?.toISOString() || '')
+                      onChange(date)
                     }}
                   />
                 </FormControl>

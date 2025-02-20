@@ -1,6 +1,5 @@
 import * as actions from './actions'
 import * as components from './components'
-import { columns } from './routes'
 import { StudentSchema } from './schema'
 import { GraduationCap } from 'lucide-react'
 
@@ -8,7 +7,7 @@ export const student = {
   actions,
   components,
   list: {
-    columns,
+    columns: () => import('./routes').then(mod => mod.columns),
   },
   form: {
     sections: [
