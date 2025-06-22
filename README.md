@@ -7,11 +7,15 @@ A modern, type-safe dashboard application built with Next.js 15+, featuring:
 - 🎨 Beautiful UI with Shadcn/ui and Tailwind
 - 🛠️ Resource-based architecture with builder pattern
 - 🚀 CLI tools for rapid development
+- 🗄️ SQLite for development, PostgreSQL for production
+- 📋 Advanced form components with 15+ field types
+- ⚡ Bulk operations and enhanced data tables
 
 ## Documentation
 - [Instruction](instruction.md) About how this project is built and what you can expect from this project.
 - [HOW TO USE](docs/INSTRUCTION.md) About how to use this project for the first time.
 - [GUIDE](docs/GUIDE.md) If you are Developer, you can use this guide to understand the code and how to extend this project.
+- [Environment Setup](ENV_SETUP.md) Complete guide for database configuration.
 
 ## Donation
 If you like this project, you can buy me a coffee:
@@ -24,6 +28,34 @@ If you like this project, you can buy me a coffee:
   </a>
 </div>
 
+## ✨ What's New
+
+### 🗄️ Simplified Database Setup
+- **SQLite for Development**: Zero configuration, no server setup required
+- **PostgreSQL for Production**: Industry standard with excellent performance
+- **Interactive Setup**: `pnpm setup-db` guides you through configuration
+- **Easy Migration**: Switch between databases with simple commands
+
+### 📋 Advanced Form System
+- **15+ Field Types**: Text, Email, Password, Number, Select, Textarea, Checkbox, Switch, Date, File Upload, Rich Editor, and more
+- **File Upload**: Drag & drop interface with validation and progress tracking
+- **Rich Text Editor**: TipTap integration with full formatting toolbar
+- **Date Picker**: Beautiful calendar interface with date formatting
+- **Conditional Fields**: Show/hide fields based on other field values
+- **Field Width Control**: Responsive layout with customizable field widths
+
+### ⚡ Enhanced Data Tables
+- **Bulk Operations**: Select multiple records and perform batch actions
+- **Advanced Filtering**: Search, sort, and filter with multiple criteria
+- **Export Functionality**: CSV export for selected or all records
+- **Row Selection**: Intuitive checkbox selection with "select all"
+- **Custom Actions**: Extensible action system for table rows
+
+### 🚀 Improved Developer Experience
+- **Interactive CLI**: Enhanced resource generation with prompts
+- **Better Error Handling**: Comprehensive error states and messages
+- **Icon Fix**: Resolved Lucide React icon import issues
+- **Type Safety**: Full TypeScript support with proper type inference
 
 ## Features
 
@@ -47,18 +79,28 @@ If you like this project, you can buy me a coffee:
 - Advanced data tables with:
   - Sorting and filtering
   - Pagination
-  - Bulk actions
+  - Bulk actions with row selection
+  - CSV export functionality
   - Search functionality
 - Resource-based architecture
 - Type-safe API endpoints
+
+### Form Components
+- **Basic Fields**: Text, Email, Password, Number, Textarea
+- **Selection Fields**: Select, Checkbox, Switch, Radio
+- **Advanced Fields**: Date Picker, File Upload, Rich Text Editor
+- **Layout Fields**: Repeater, Conditional visibility, Field groups
+- **Validation**: Real-time validation with Zod schemas
+- **Responsive Design**: Mobile-friendly form layouts
 
 ### Developer Experience
 - TypeScript for type safety
 - Resource-based architecture
 - CLI tools for scaffolding:
-  - Model creation with database schema
+  - Interactive model creation
   - Dashboard page generation
   - Resource configuration
+  - Database setup automation
 - Comprehensive documentation
 - Hot module reloading
 
@@ -90,7 +132,7 @@ This will guide you through setting up SQLite for development or PostgreSQL for 
 **OR** manually create your `.env` file:
 ```env
 # SQLite for development (recommended)
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="file:./prisma/dev.db"
 NEXTAUTH_SECRET="your-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
 NODE_ENV="development"
@@ -102,7 +144,7 @@ APP_URL="http://localhost:3000"
 pnpm db:init
 ```
 
-5. Create a test user (optional):
+5. Create a test user (interactive):
 ```bash
 pnpm create-user
 ```
@@ -123,6 +165,7 @@ This project uses **SQLite for development** and **PostgreSQL for production**:
 - ✅ Fast local development and testing
 - ✅ Easy database reset and seeding
 - ✅ Perfect for prototyping and development
+- ✅ Portable - entire database in one file
 
 ### Production (PostgreSQL)
 - ✅ Better performance for concurrent users
@@ -134,15 +177,16 @@ To switch between databases, use `pnpm setup-db` or see [ENV_SETUP.md](ENV_SETUP
 
 ## CLI Tools
 
-### Create Model (Standard)
+### Enhanced Resource Creation
 ```bash
-pnpm create-model --name="Product" --fields="
-  name: z.string().min(1, 'Name is required'),
-  price: z.number().min(0),
-  stock: z.number().min(0),
-  status: z.enum(['draft', 'published'])
-"
+pnpm create-enhanced-resource
 ```
+Interactive CLI that creates complete resources with:
+- Model schema with 15+ field types
+- Form components with validation
+- Data tables with bulk actions
+- Server actions and API routes
+- Navigation integration
 
 ### Create Model (Interactive)
 ```bash
@@ -155,20 +199,24 @@ This interactive CLI tool will guide you through:
 - Dashboard page creation
 - Database schema updates
 
-### Create Page
+### Database Management
 ```bash
-pnpm create-page --name="feature" --route="feature" --title="Feature Management" --description="Manage your features"
+pnpm setup-db        # Interactive database setup
+pnpm db:init         # Initialize database
+pnpm db:reset        # Reset database (with confirmation)
+pnpm db:studio       # Open database GUI
 ```
 
-### Push Model to Database
+### User Management
 ```bash
-pnpm push-model
+pnpm create-user     # Interactive user creation
 ```
-Selectively push models to your database without data loss.
 
-### Create User
+### Legacy Tools
 ```bash
-pnpm create-user --name="User Name" --email="user@example.com" --password="password" --role="ROLE"
+pnpm create-model    # Standard model creation
+pnpm create-page     # Generate a new page
+pnpm push-model      # Push models to database
 ```
 
 ## Project Structure
@@ -177,17 +225,24 @@ pnpm create-user --name="User Name" --email="user@example.com" --password="passw
 src/
 ├── app/                 # Next.js app router pages
 ├── components/          # React components
+│   ├── actions/        # Action components
 │   ├── dashboard/      # Dashboard-specific components
-│   ├── ui/             # Base UI components
+│   ├── forms/          # Form components
+│   ├── ui/             # Base UI components (15+ components)
 │   └── widgets/        # Dashboard widgets
 ├── lib/                # Utility functions
 ├── builders/           # Builder pattern implementations
-└── resources/          # Resource configurations
-    └── [resource]/     # Resource-specific files
-        ├── schema.ts   # Zod schema
-        ├── actions.ts  # Server actions
-        ├── routes.ts   # Route config
-        └── index.ts    # Resource config
+│   ├── actions.ts      # Action builder
+│   ├── form/           # Form builders
+│   ├── table/          # Table builders
+│   └── resource.tsx    # Resource builder
+├── resources/          # Resource configurations
+│   └── [resource]/     # Resource-specific files
+│       ├── schema.ts   # Zod schema
+│       ├── actions.ts  # Server actions
+│       ├── routes.ts   # Route config
+│       └── index.ts    # Resource config
+└── scripts/            # CLI tools and utilities
 ```
 
 ## Available Scripts
@@ -205,11 +260,37 @@ src/
 - `pnpm db:studio` - Open Prisma Studio (database GUI)
 
 ### Code Generation
-- `pnpm create-model` - Interactive model creation
+- `pnpm create-enhanced-resource` - Enhanced interactive resource creation
 - `pnpm create-model-speed` - Quick model creation
+- `pnpm create-model` - Standard model creation
 - `pnpm create-page` - Generate a new page
 - `pnpm push-model` - Push models to database
-- `pnpm create-user` - Create a test user
+- `pnpm create-user` - Create a test user (interactive)
+
+## 🎯 Feature Highlights
+
+### Form Components (15+ Types)
+- **Text Fields**: Text, Email, Password, Number, URL, Tel
+- **Selection**: Select, Multi-select, Checkbox, Switch, Radio
+- **Date/Time**: Date Picker, Time Picker, DateTime
+- **Content**: Textarea, Rich Text Editor (TipTap)
+- **Files**: File Upload with drag & drop
+- **Layout**: Repeater fields, Conditional visibility
+
+### Data Table Features
+- **Sorting**: Click column headers to sort
+- **Filtering**: Advanced search and filter options
+- **Pagination**: Configurable page sizes
+- **Selection**: Bulk select with checkbox
+- **Actions**: Row actions and bulk operations
+- **Export**: CSV export for selected records
+
+### Action System
+- **Header Actions**: Page-level actions (Create, Import, etc.)
+- **Table Actions**: Row-level actions (Edit, Delete, View)
+- **Bulk Actions**: Multi-record operations (Delete, Export)
+- **Modal Actions**: Popup interactions
+- **Confirmation**: Built-in confirmation dialogs
 
 ## Documentation
 
@@ -219,6 +300,25 @@ src/
 - [Components](docs/GUIDE.md#components)
 - [API](docs/GUIDE.md#api)
 - [Best Practices](docs/GUIDE.md#best-practices)
+- [Environment Setup](ENV_SETUP.md)
+
+## 🚀 Recent Updates
+
+### v1.2.0 - Database & Form Enhancements
+- ✅ SQLite development setup with PostgreSQL production
+- ✅ Interactive database setup script
+- ✅ Enhanced create-user script with prompts
+- ✅ Fixed Lucide React icon import issues
+- ✅ 15+ advanced form field types
+- ✅ Bulk operations with row selection
+- ✅ CSV export functionality
+- ✅ Enhanced CLI tools with better UX
+
+### Bug Fixes
+- ✅ Fixed undefined icon imports (post → FileText)
+- ✅ Resolved React component type errors
+- ✅ Improved database connection handling
+- ✅ Enhanced error messages and validation
 
 ## Contributing
 
@@ -234,13 +334,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- [Next.js](https://nextjs.org/)
-- [NextAuth.js](https://next-auth.js.org/)
-- [Prisma](https://www.prisma.io/)
-- [ShadcnUI](https://ui.shadcn.com/)
-- [TailwindCSS](https://tailwindcss.com/)
-- [Zod](https://zod.dev/)
+- [Next.js](https://nextjs.org/) - React framework
+- [NextAuth.js](https://next-auth.js.org/) - Authentication
+- [Prisma](https://www.prisma.io/) - Database ORM
+- [ShadcnUI](https://ui.shadcn.com/) - UI components
+- [TailwindCSS](https://tailwindcss.com/) - Styling
+- [Zod](https://zod.dev/) - Schema validation
+- [Lucide React](https://lucide.dev/) - Icons
+- [TipTap](https://tiptap.dev/) - Rich text editor
 
 ## Support
 
 If you find this project helpful, please give it a ⭐️ on GitHub!
+
+---
+
+**Made with ❤️ by [Aris](https://github.com/madebyaris)**
