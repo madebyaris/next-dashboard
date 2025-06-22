@@ -1,11 +1,14 @@
 'use server'
 
-import { routes } from './routes'
+import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
-import { type Post, createPostSchema, updatePostSchema } from './schema'
-import { z } from 'zod'
+import { 
+  postSchema, 
+  createpostSchema, 
+  updatepostSchema,
+  type post 
+} from './schema'
 
 export async function list(options: {
   page?: number
@@ -24,13 +27,6 @@ export async function list(options: {
       orderBy,
       skip,
       take: limit,
-      include: {
-        author: {
-          select: {
-            name: true,
-          },
-        },
-      },
     }),
   ])
 
@@ -45,64 +41,44 @@ export async function list(options: {
 export async function getById(id: string) {
   const post = await prisma.post.findUnique({
     where: { id },
-    include: {
-      author: {
-        select: {
-          name: true,
-        },
-      },
-    },
   })
 
   if (!post) {
-    throw new Error('Post not found')
+    throw new Error('post not found')
   }
 
   return post
 }
 
-export async function create(data: Omit<Post, 'id' | 'createdAt' | 'updatedAt' | 'author'>) {
-  try {
-    const validated = createPostSchema.parse(data)
-
-    const post = await prisma.post.create({
-      data: validated,
-      include: {
-        author: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    })
-
-    revalidatePath(routes.list)
-    redirect(routes.list)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new Error(JSON.stringify(error.errors, null, 2))
-    }
-    throw error
+export async function create(data: FormData) {
+  const formData = {
+    post: data.get('post'),
   }
+
+  const validated = createpostSchema.parse(formData)
+
+  const post = await prisma.post.create({
+    data: validated,
+  })
+
+  revalidatePath('/dashboard/posts')
+  redirect('/dashboard/posts')
 }
 
-export async function update(id: string, data: Partial<Post>) {
-  const validated = updatePostSchema.parse(data)
+export async function update(id: string, data: FormData) {
+  const formData = {
+    post: data.get('post'),
+  }
+
+  const validated = updatepostSchema.parse(formData)
 
   const post = await prisma.post.update({
     where: { id },
     data: validated,
-    include: {
-      author: {
-        select: {
-          name: true,
-        },
-      },
-    },
   })
 
-  revalidatePath(routes.list)
-  redirect(routes.list)
+  revalidatePath('/dashboard/posts')
+  redirect('/dashboard/posts')
 }
 
 export async function delete_(id: string) {
@@ -110,27 +86,22 @@ export async function delete_(id: string) {
     where: { id },
   })
 
-  revalidatePath(routes.list)
+  revalidatePath('/dashboard/posts')
 }
 
-export async function edit(id: string) {
-  redirect(routes.edit(id))
+
+export async function bulkDelete(ids: string[]) {
+  await prisma.post.deleteMany({
+    where: { id: { in: ids } },
+  })
+
+  revalidatePath('/dashboard/posts')
 }
 
-export async function archive(id: string) {
-  await update(id, { published: false })
+export async function exportToCsv(posts: post[]) {
+  const csv = posts.map(item => 
+    [item.post].join(',')
+  ).join('\n')
+  
+  return csv
 }
-
-export async function getStats() {
-  const [total, published, draft] = await Promise.all([
-    prisma.post.count(),
-    prisma.post.count({ where: { published: true } }),
-    prisma.post.count({ where: { published: false } }),
-  ])
-
-  return {
-    total,
-    published,
-    draft,
-  }
-} 

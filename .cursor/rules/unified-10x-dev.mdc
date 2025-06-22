@@ -1,0 +1,66 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Unified 10X Developer Framework - Single Mode Solution
+
+## Project Context & Architecture
+**Tech Stack**: [Specify: React/Vue/Angular, Node.js/Python/Go, Database, Cloud Platform]
+**Architecture**: [Specify: Monolith/Microservices, MVC/Component-based, State Management]
+**Core Constraints**: Follow project patterns, maintain backwards compatibility, prioritize user experience
+
+## Development Standards
+**Code Quality**: Use TypeScript/strong typing, functional programming patterns, SOLID principles
+**Naming**: Descriptive variables/functions, PascalCase components, camelCase functions, kebab-case files
+**Error Handling**: Try-catch blocks, proper HTTP status codes, user-friendly error messages
+**Comments**: Complex business logic explanation, API documentation, TODO with tickets
+
+## Security & Authentication
+**Auth Pattern**: JWT with refresh tokens, OAuth 2.0 for third-party, secure HTTP-only cookies
+**Input Validation**: Sanitize all inputs, parameterized queries, rate limiting
+**Headers**: CSP, HSTS, X-Frame-Options implementation
+**Permissions**: Role-based access control, principle of least privilege
+
+## UI/UX Guidelines
+**Accessibility**: WCAG 2.1 AA minimum, semantic HTML, keyboard navigation, screen reader support
+**Performance**: <3s load time, lazy loading, code splitting, image optimization
+**Responsive**: Mobile-first design, flexible grid systems, touch-friendly interactions
+**Feedback**: Loading states, error boundaries, success confirmations
+
+## Problem-Solving Approach
+**Method**: IDENTIFY → ISOLATE → FIX → VERIFY process
+**Analysis**: 5 Whys root cause analysis, break complex problems into small testable chunks
+**Documentation**: Log debugging steps, document solutions, share knowledge with team
+**Testing**: Write tests for bug scenarios, validate edge cases
+
+## Performance & Efficiency
+**Optimization**: Profile before optimizing, cache at multiple levels, minimize network requests
+**Code Reuse**: DRY principle without premature abstraction, modular components
+**Build Process**: Hot reloading, incremental builds, automated testing pipeline
+**Monitoring**: Error tracking, performance metrics, user analytics
+
+## AI Assistance Mode
+**Communication**: Be specific about requirements, provide context, ask for alternatives
+**Code Generation**: Request complete solutions, ask for explanations, validate outputs
+**Debugging**: Share error messages, explain expected vs actual behavior
+**Learning**: Ask for best practices, request documentation, seek pattern examples
+
+## Quick Commands
+- "FOCUS MODE" - Concentrate on current task without distractions
+- "DEBUG MODE" - Systematic debugging with step-by-step analysis  
+- "OPTIMIZE MODE" - Performance improvements and code refactoring
+- "SECURE MODE" - Security review and vulnerability assessment
+- "DESIGN MODE" - UI/UX improvements and accessibility compliance
+
+## Team Collaboration
+**Code Reviews**: Constructive feedback, knowledge sharing, consistent standards
+**Documentation**: README updates, API docs, architectural decisions
+**Communication**: Clear commit messages, detailed PR descriptions, issue tracking
+**Knowledge Sharing**: Tech talks, pair programming, mentoring
+
+## Rapid Development Patterns
+**Setup**: Project templates, boilerplate generation, environment configuration
+**Common Tasks**: CRUD operations, authentication flows, API integrations
+**Testing**: Unit tests, integration tests, E2E scenarios
+**Deployment**: CI/CD pipelines, environment management, rollback strategies

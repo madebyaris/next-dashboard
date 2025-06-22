@@ -1,25 +1,21 @@
 import { z } from 'zod'
 
+// Zod schema for validation
 export const postSchema = z.object({
-  id: z.string(),
-  title: z.string().min(1, 'Title is required'),
-  content: z.string().min(1, 'Content is required'),
-  published: z.boolean(),
-  authorId: z.string(),
+  id: z.string().cuid(),
+  post: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  author: z.object({
-    name: z.string().nullable(),
-  }),
 })
 
-export type Post = z.infer<typeof postSchema>
-
-export const createPostSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  content: z.string().min(1, 'Content is required'),
-  published: z.boolean().default(false),
-  authorId: z.string(),
+export const createpostSchema = postSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 })
 
-export const updatePostSchema = createPostSchema.partial() 
+export const updatepostSchema = createpostSchema.partial()
+
+export type post = z.infer<typeof postSchema>
+export type Createpost = z.infer<typeof createpostSchema>
+export type Updatepost = z.infer<typeof updatepostSchema>

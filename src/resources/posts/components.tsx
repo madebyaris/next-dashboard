@@ -82,6 +82,19 @@ export const PostList = ({ data }: { data: Post[] }) => {
         data={data}
         searchKey="title"
         pageSize={10}
+        enableSelection={config.list.enableSelection}
+        bulkActions={config.list.bulkActions}
+        onExport={(data) => {
+          const csv = data.map(post => 
+            `"${post.title}","${post.content}","${post.published}"`
+          ).join('\n')
+          const blob = new Blob([csv], { type: 'text/csv' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = 'posts.csv'
+          a.click()
+        }}
       />
     </div>
   )

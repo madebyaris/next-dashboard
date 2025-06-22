@@ -1,0 +1,9 @@
+
+// Add this to your schema.prisma file:
+
+model post {
+  id        String   @id @default(cuid())
+  post  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -12,13 +12,15 @@ export type FieldType =
   | 'checkbox'
   | 'radio'
   | 'date'
-  | 'time'
   | 'datetime'
-  | 'file'
-  | 'rich-text'
+  | 'time'
+  | 'file-upload'
+  | 'rich-editor'
   | 'code'
   | 'color'
   | 'toggle'
+  | 'repeater'
+  | 'belongs-to'
 
 export interface FormField {
   name: string
@@ -150,10 +152,24 @@ export const fields = {
     ...config,
   }),
 
-  richText: (name: string, label: string, config: Partial<Omit<FormField, 'name' | 'label' | 'type'>> = {}): FormField => ({
+  richEditor: (name: string, label: string, config: Partial<Omit<FormField, 'name' | 'label' | 'type'>> = {}): FormField => ({
     name,
     label,
-    type: 'rich-text',
+    type: 'rich-editor',
+    ...config,
+  }),
+
+  fileUpload: (name: string, label: string, config: Partial<Omit<FormField, 'name' | 'label' | 'type'>> = {}): FormField => ({
+    name,
+    label,
+    type: 'file-upload',
+    ...config,
+  }),
+
+  date: (name: string, label: string, config: Partial<Omit<FormField, 'name' | 'label' | 'type'>> = {}): FormField => ({
+    name,
+    label,
+    type: 'date',
     ...config,
   }),
 

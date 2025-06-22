@@ -29,6 +29,14 @@ yarn-error.log*
 .env.test
 .env.production
 
+# SQLite database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+dev.db
+prisma/dev.db
+
 # vercel
 .vercel
 

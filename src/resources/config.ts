@@ -66,6 +66,13 @@ export interface Widget {
   stats: Stat[]
 }
 
+export interface BulkAction<T = any> {
+  label: string
+  icon?: LucideIcon
+  onClick: (selectedRows: T[]) => void | Promise<void>
+  variant?: 'default' | 'destructive' | 'outline'
+}
+
 export interface ResourceConfig<T> {
   name: string
   path: string
@@ -78,6 +85,8 @@ export interface ResourceConfig<T> {
       field: keyof T
       direction: 'asc' | 'desc'
     }
+    enableSelection?: boolean
+    bulkActions?: BulkAction<T>[]
     actions?: {
       create?: {
         icon: LucideIcon

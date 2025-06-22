@@ -66,8 +66,7 @@ If you like this project, you can buy me a coffee:
 
 ### Prerequisites
 - Node.js 18+
-- PostgreSQL
-- pnpm
+- pnpm (SQLite is used for development - no database server needed!)
 
 ### Installation
 
@@ -82,21 +81,30 @@ cd next-dashboard
 pnpm install
 ```
 
-3. Set up environment variables:
+3. Set up the database (interactive):
 ```bash
-cp .env.example .env
+pnpm setup-db
 ```
+This will guide you through setting up SQLite for development or PostgreSQL for production.
 
-4. Update `.env` with your configuration:
+**OR** manually create your `.env` file:
 ```env
-DATABASE_URL="postgresql://username:password@localhost:5432/next_dashboard"
+# SQLite for development (recommended)
+DATABASE_URL="file:./dev.db"
 NEXTAUTH_SECRET="your-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
+NODE_ENV="development"
+APP_URL="http://localhost:3000"
 ```
 
-5. Initialize the database:
+4. Initialize the database:
 ```bash
-pnpm prisma db push
+pnpm db:init
+```
+
+5. Create a test user (optional):
+```bash
+pnpm create-user
 ```
 
 6. Start the development server:
@@ -105,6 +113,24 @@ pnpm dev
 ```
 
 Visit [http://localhost:3000](http://localhost:3000) to see your dashboard.
+
+## Database Configuration
+
+This project uses **SQLite for development** and **PostgreSQL for production**:
+
+### Development (SQLite)
+- ✅ Zero configuration - no server setup required
+- ✅ Fast local development and testing
+- ✅ Easy database reset and seeding
+- ✅ Perfect for prototyping and development
+
+### Production (PostgreSQL)
+- ✅ Better performance for concurrent users
+- ✅ Advanced features and better scalability
+- ✅ Industry standard for production web applications
+- ✅ Excellent ecosystem and hosting support
+
+To switch between databases, use `pnpm setup-db` or see [ENV_SETUP.md](ENV_SETUP.md) for detailed instructions.
 
 ## CLI Tools
 
@@ -166,14 +192,24 @@ src/
 
 ## Available Scripts
 
+### Development
 - `pnpm dev` - Start development server
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
 - `pnpm lint` - Run ESLint
+
+### Database
+- `pnpm setup-db` - Interactive database setup (SQLite/PostgreSQL)
+- `pnpm db:init` - Initialize database with current schema
+- `pnpm db:reset` - Reset database (⚠️ deletes all data)
+- `pnpm db:studio` - Open Prisma Studio (database GUI)
+
+### Code Generation
 - `pnpm create-model` - Interactive model creation
 - `pnpm create-model-speed` - Quick model creation
 - `pnpm create-page` - Generate a new page
 - `pnpm push-model` - Push models to database
+- `pnpm create-user` - Create a test user
 
 ## Documentation
 
